@@ -1,0 +1,9 @@
+__pycache__
+.env
+dump.rdb
+server_logs.txt
+solution_output.txt
+.idx
+temp_script.jl
+.vscode
+

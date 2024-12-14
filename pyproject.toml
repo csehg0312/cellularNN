@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "cellularnn"
+version = "0.2.0"
+description = "The backend implementation of cellularNNRealtime which is the developed version of https://github.com/csehg0312/cellularNNRealtime repository."
+authors = ["csehgabor451 <csehgabor451@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = "^3.10.10"
+python-dotenv = "^1.0.1"
+redis = "^5.1.1"
+aiolimiter = "^1.1.0"
+asyncio = "^3.4.3"
+numpy = "^2.1.2"
+opencv-python = "^4.10.0.84"
+gradio = "^5.5.0"
+pillow = "^11.0.0"
+websocket = "^0.2.1"
+websocket-client = "^1.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

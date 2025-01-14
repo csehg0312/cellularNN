@@ -7,7 +7,13 @@ import uuid
 from contextlib import suppress
 import datetime
 import json
-import socket
+import websockets
+from pathlib import Path
+
+import numpy as np
+from config.config import get_available_port
+from config.config import load_clients_config
+dist_path = Path(__file__).parent.parent / "dist"
 
 class AsyncServer:
     def __init__(self, host, port, julia_port, redis_host, redis_port):
@@ -40,7 +46,18 @@ class AsyncServer:
         self.shutdown_event = asyncio.Event()
         self.pending_tasks = set()
         self.log_lock = asyncio.Lock()
+        self.connected_websockets = set()
 
+    async def handle_index(self, request):
+        # Extract user data
+        client_ip = request.remote  # Get the client's IP address
+        query_params = request.query  # Get query parameters
+
+        # Log the user data
+        await self.log_to_file(f"User  accessed index page from IP: {client_ip}, Query Params: {query_params}")
+
+        return web.FileResponse(dist_path / "index.html")
+        
     async def start(self):
         """
         Start the AsyncServer.
@@ -63,13 +80,16 @@ class AsyncServer:
             self.redis_client = None
 
         app = web.Application()
+        app.router.add_static('/assets', path=dist_path / 'assets', name='assets')
         app.add_routes([
             web.post('/tasks', self.handle_request),
-            # web.get('/results/{task_id}', self.handle_request),
-        ])
+            web.get('/ws', self.websocket_handler),  
+            web.get('/', self.handle_index)          
+        ])        
         self.app_runner = web.AppRunner(app)
+
         await self.app_runner.setup()
-        site = web.TCPSite(self.app_runner, self.host, self.port)
+        site = web.TCPSite(self.app_runner, self.host, self.port)       
         await site.start()
         await self.log_to_file(f"Async HTTP server started on {self.host}:{self.port}")
 
@@ -100,6 +120,51 @@ class AsyncServer:
             except Exception as e:
                 await self.log_to_file(f"An error occurred in main loop: {e}")
 
+    async def websocket_handler(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)        
+        task_id = request.query.get('task_id') 
+        if not task_id:
+            await ws.send_str(json.dumps({'error': 'Missing task_id in query parameters'}))
+            return ws
+
+        async for msg in ws:
+            if msg.type == np.float32:
+                try:
+                    # Convert the binary data directly to a NumPy array to a NumPy array
+                    image_np = msg
+
+                    # Get other task data from Redis
+                    task_data_json = await self.redis_client.get(f'task:data:{task_id}')
+                    if task_data_json is None:
+                        await ws.send_str(json.dumps({'error': 'Task data not found in Redis'}))
+                        continue
+                    
+                    task_data = json.loads(task_data_json)
+
+                    # Combine NumPy array data with other task data
+                    combined_data = task_data.copy()
+                    combined_data['array'] = image_np.tolist()  # Store NumPy array as list
+
+                    # Push combined data to Redis queue
+                    await self.redis_client.lpush('queue:task_queue', json.dumps(combined_data))
+                    await ws.send_str(json.dumps({'status': 'NumPy array received and queued'}))
+                except Exception as e:
+                    await ws.send_str(json.dumps({'error': str(e)}))
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                print(f'ws connection closed with exception {ws.exception()}')
+
+        return ws
+
+
+    async def notify_websockets(self, message):
+        for ws in self.connected_websockets:
+            try:
+                await ws.send_str(message)  # Assuming you want to send a string message
+            except Exception as e:
+                print(f"Error sending message to websocket: {e}")
+                # You might want to remove the websocket from the set here if it's no longer valid
+
     async def clear_log_file(self):
         log_file_path = "server_logs.txt"
         async with self.log_lock:
@@ -114,12 +179,12 @@ class AsyncServer:
             raise ValueError("message is null or empty")
 
         log_file_path = "server_logs.txt"
-        if not log_file_path:
-            raise ValueError("log_file_path is null or empty")
+        # if not log_file_path:
+        #     raise ValueError("log_file_path is null or empty")
 
         async with self.log_lock:
-            if not self.log_lock.locked():
-                raise RuntimeError("log_lock is not locked")
+            # if not self.log_lock.locked():
+            #     raise RuntimeError("log_lock is not locked")
 
             try:
                 with open(log_file_path, "a") as log_file:
@@ -159,6 +224,13 @@ class AsyncServer:
                     self.julia_server.close()
                     await self.julia_server.wait_closed()
 
+            # Close websocket connections
+            for ws in self.connected_websockets:
+                await ws.close(code=1001, message='Server shutdown')
+
+            # Clear the set of connected websockets
+            self.connected_websockets.clear()
+
             # Cleanup the HTTP server
             if self.app_runner is not None:
                 with suppress(Exception):
@@ -187,8 +259,6 @@ class AsyncServer:
             if data is None:
                 raise ValueError("Request body is null or empty")
 
-            if data.get("image") is None:
-                raise ValueError("image is null or empty")
             if data.get('available_port') is None:
                 raise ValueError("available_port is null or empty")
 
@@ -202,19 +272,16 @@ class AsyncServer:
             # Push task_id to task queue
             await self.redis_client.lpush('queue:task_queue', task_id)
             
+            # Construct the websocket URL
+            port_start, port_end = load_clients_config()
+            websocket_url = f"ws://{self.host}:{get_available_port(port_start, port_end)}/ws" 
+
             return web.json_response({
                 'server_response': "All data received successfully!",
-                'response_status':200,
-                })
-        elif request.method == 'GET':
-            task_id = request.match_info['task_id']
-            if task_id is None:
-                raise ValueError("task_id is null or empty")
-
-            result = self.results_cache.get(task_id)
-            if result is None:
-                result = await self.wait_for_result(task_id)
-            return web.json_response({'result': result})
+                'response_status': 200,
+                'task_id': task_id,
+                'websocket_url': websocket_url,  # Include the websocket URL in the response
+            })
 
     async def handle_tasks(self):
         while self.running:

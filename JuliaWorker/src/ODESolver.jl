@@ -42,6 +42,22 @@ function ode_result_process(z, n, m)
     return out_l
 end
 
+# function Normalization(input)
+#     output = @. (input / 127.5) -1
+#     return output
+# end
+
+# function normalize_image!(input, output)
+#     @avx for i in eachindex(input)
+#         output[i] = (input[i] / 127.5) - 1
+#     end
+# end
+
+# function Denormalization(input)
+#     output = @. (input * 127.5) +1
+#     return output
+# end
+
 function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64)
     SocketLogger.write_log_to_socket(socket_conn, "Starting ODE solver...\n")
     n, m = size(image)

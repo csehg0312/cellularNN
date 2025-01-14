@@ -1,0 +1,89 @@
+/* Basic container styling */
+.photo-cnn-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    max-width: 100%;
+  }
+  
+  /* Style for the image upload and preview sections */
+  .upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* flex: 1 1 100%; */
+    margin-top: 20px;
+  }
+  
+  .image-preview img,
+  .output-preview img {
+    margin-top: 20px;
+    height: auto;
+    max-width: 100%;
+  }
+  
+  /* Style for settings */
+  .settings-container {
+    flex: 1 1 100%;
+    margin-top: 20px;
+  }
+  
+  /* Image size options */
+  .image-size-options {
+    margin-top: 10px;
+  }
+  
+  .file-name {
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 1rem;
+  }
+  
+  label {
+    display: block;
+    margin-top: 10px;
+  }
+  
+  /* Responsive breakpoints */
+  @media (min-width: 768px) {
+    .photo-cnn-container {
+      flex-direction: row;
+      gap: 40px;
+    }
+  
+    .upload-container,
+    .settings-container {
+      flex: 1 1 50%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .photo-cnn-container {
+      flex-direction: column;
+    }
+  
+    .upload-container,
+    .settings-container {
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .photo-cnn-container {
+      padding: 5px;
+    }
+  
+    select,
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+  
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  }
+  

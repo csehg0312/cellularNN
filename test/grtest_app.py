@@ -88,8 +88,21 @@ def process_image(input_image):
     grayscaled = image.convert('L')
     np_grayscaled = np.array(grayscaled)
 
+    async def send_image_data(ws_url, np_array):
+        async with websockets.connect(ws_url) as websocket:
+            # Convert the NumPy array to bytes
+            np_bytes = np_array.astype(np.float32).tobytes()  
+
+            # Send the binary data over the WebSocket
+            await websocket.send(np_bytes)
+            print("Image data sent over WebSocket.")
+
+            # Receive and print the server's response (optional)
+            response = await websocket.recv()
+            print(f"Server response: {response}")
+
     params = {
-        "image": np_grayscaled.tolist(),
+        # "image": np_grayscaled.tolist(),
         "controlB": controlB.tolist(),
         "feedbackA": feedA.tolist(),
         "Ib": Ib.item(),
@@ -99,12 +112,13 @@ def process_image(input_image):
     }
     payload, headers = req_params(params)
 
-    # Send POST request to get the WebSocket port
+    # Send POST request 
     response = requests.post('http://127.0.0.1:8082/tasks', headers=headers, data=payload)
-
+    
+    send_image_data(ws_url=response.json()['websocket_url'], np_array=np_grayscaled)
     # Extract the WebSocket port from the response
     websocket_url = f"ws://127.0.0.1:{params['available_port']}/"
-    print(f"WebSocket URL: {websocket_url}")
+    print(f"WebSocket URL: {websocket_url}, {response.text}")
     print(f"Server Response: {response.json()}")
 
     # Start the WebSocket server if not already running
@@ -124,12 +138,14 @@ def process_image(input_image):
         return "Failed to send data."
 
     response_data = response.json()
-    print("Response from POST:", response_data)
+    print("Response from POST:", response.text)
 
     # Perform cleanup after processing
     cleanup()
 
     return "WebSocket server started and cleaned up successfully!"
+
+
 
 # Create the Gradio interface
 iface = gr.Interface(

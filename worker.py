@@ -29,8 +29,8 @@ def run_worker():
     except subprocess.CalledProcessError as e:
         print("Error calling Julia:")
         print(e.stderr)
-    # finally: 
-    #     os.remove("temp_script.jl")
+    finally: 
+        os.remove("temp_script.jl")
 
 if __name__ == "__main__":
     run_worker()

@@ -11,13 +11,11 @@ function PhotoCNN() {
   const [image, setImage] = createSignal(null);
   const [outputImage, setOutputImage] = createSignal(null);
   const [loading, setLoading] = createSignal(false);
-  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? 'https://localhost:8082/tasks' : 'https://192.168.0.108:8082/tasks');
+  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/tasks' : '/tasks');
   const [selectedSize, setSelectedSize] = createSignal('320x240'); // default size
   const [invertSize, setInvertSize] = createSignal(false);
   const [KeepOriginalSize, setKeepOriginalSize] = createSignal(false);
-
   const [selectedMode, setSelectedMode] = createSignal('edge_detect_'); 
-  
 
   // New state to handle notification
   const [responseMessage, setResponseMessage] = createSignal(null);
@@ -34,6 +32,29 @@ function PhotoCNN() {
       reader.onload = () => setImage(reader.result);
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    const files = event.dataTransfer.files;
+
+    if (files.length > 0) {
+      const file = files[0];
+      const validTypes = ["image/png", "image/jpeg", "image/gif"]; // Specify valid file types
+
+      if (validTypes.includes(file.type)) {
+        const reader = new FileReader();
+        reader.onload = () => setImage(reader.result);
+        reader.readAsDataURL(file);
+      } else {
+        setResponseMessage("Invalid file type. Please upload a PNG, JPEG, or GIF image.");
+        setResponseStatus(400);
+      }
+    }
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
   };
 
   const handleSizeChange = (e) => {
@@ -59,24 +80,56 @@ function PhotoCNN() {
     if (!image()) return;
     console.log('Starting upload');
     setLoading(true);
-    const formData = new FormData();
-    formData.append('file', image());
-    formData.append('keep_original_size', KeepOriginalSize());
-    formData.append('size', selectedSize());
-    formData.append('invert_size', invertSize());
-    formData.append('mode', selectedMode());
+
+    // Create a JSON object to send
+    const jsonData = {
+      image: image(),
+      keep_original_size: KeepOriginalSize(),
+      size: selectedSize(),
+      invert_size: invertSize(),
+      mode: selectedMode(),
+      available_port: 5050
+    };
 
     try {
       const response = await fetch(serverUrl(), {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json', // Set the content type to JSON
+        },
+        body: JSON.stringify(jsonData), // Convert the JSON object to a string
       });
 
       if (response.ok) {
         console.log('Ready to receive');
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setOutputImage(url);
+
+        const jsonResponse = await response.json();
+        console.log(jsonResponse);
+        const wsUrl = jsonResponse.websocket_url;
+
+
+        const socket = new WebSocket(wsUrl);
+
+        socket.onopen = function(event) {
+          console.log("WebSocket is open now.");
+        };
+
+        socket.onmessage = function(event) {
+          console.log("Message from server: ", event.data);
+        };
+        
+        socket.onclose = function(event) {
+            console.log("WebSocket is closed now.");
+        };
+        
+        socket.onerror = function(error) {
+            console.error("WebSocket error: ", error);
+        };
+
+        // const url = URL.createObjectURL(blob);
+        // setOutputImage(url);
+
+
         setResponseMessage("Upload successful!");
         setResponseStatus(200); // Successful status
       } else {
@@ -93,11 +146,11 @@ function PhotoCNN() {
   };
 
   return (
-    <div class=" text-white flex flex-col items-center p-4 min-h-screen">
+    <div class="text-white flex flex-col items-center p-4 min-h-screen">
       <div class="flex flex-col items-center w-full max-w-md mt-4">
         <div class="flex items-center space-x-2">
           <label class="relative inline-block cursor-pointer">
-            <span class="block text-center bg-[#ff9500] text-white py-2 px-4 rounded border-2 border-[#e56e00] font-bold">
+            <span class ="block text-center bg-[#ff9500] text-white py-2 px-4 rounded border-2 border-[#e56e00] font-bold">
               {image() === null ? "Kép feltöltése" : "Kép módosítása"}
             </span>
             <input
@@ -111,13 +164,28 @@ function PhotoCNN() {
           <label class="relative inline-block cursor-pointer">
             {image() && (
               <button
-                class=" bg-red-500 text-white py-2 px-4 rounded text-sm border-2 border-red-700 font-bold"
+                class="bg-red-500 text-white py-2 px-4 rounded text-sm border-2 border-red-700 font-bold"
                 onClick={() => setImage(null)} // Function to clear the image
               >
                 Clear
               </button>
             )}
           </label>
+        </div>
+
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          style={{
+            border: "2px dashed #ccc",
+            padding: "20px",
+            textAlign: "center",
+            cursor: "pointer",
+            marginTop: "20px",
+            width: "100%",
+          }}
+        >
+          <p>{image() === null ? "Húzzon ide egy képet, vagy kattintson fel a feltöltéshez" : "Dobjon ide egy másik képet, hogy helyettesítse azt."}</p>
         </div>
 
         {image() && (
@@ -133,6 +201,7 @@ function PhotoCNN() {
             <img src={outputImage()} alt="Processed" class="w-full max-w-sm" />
           </div>
         )}
+
       </div>
 
       {/* Render ResponseNotification */}
@@ -185,23 +254,23 @@ function PhotoCNN() {
           </optgroup>
         </select>
 
-          <div class="flex flex-col items-center mb-4">
-            <h4 class="mb-2">Image size to use <br/> (Kimeneti kép mérete):</h4>
-            <select value={selectedSize()} onChange={handleSizeChange} disabled={KeepOriginalSize() ? true : false} class="bg-black mb-2 border border-gray-300 p-2 rounded">
-              <option value="320x240">320x240</option>
-              <option value="640x480">640x480</option>
-              <option value="960x540">960x540</option>
-              <option value="1280x720">1280x720</option>
-            </select>
-            <label class="flex items-center mb-2">
-              <input type="checkbox" id="invert_size" checked={invertSize()} onChange={handleInvertSizeChange} class="mr-2" />
-              Invert the size?
-            </label>
-            <label class="flex items-center">
-              <input type="checkbox" id="keep_original_size" checked={KeepOriginalSize()} onChange={handleKeepOriginalSize} class="mr-2" />
-              Keep original size?
-            </label>
-          </div>
+        <div class="flex flex-col items-center mb-4">
+          <h4 class="mb-2">Image size to use <br/> (Kimeneti kép mérete):</h4>
+          <select value={selectedSize()} onChange={handleSizeChange} disabled={KeepOriginalSize() ? true : false} class="bg-black mb-2 border border-gray-300 p-2 rounded">
+            <option value="320x240">320x240</option>
+            <option value="640x480">640x480</option>
+            <option value="960x540">960x540</option>
+            <option value="1280x720">1280x720</option>
+          </select>
+          <label class="flex items-center mb-2">
+            <input type="checkbox" id="invert_size" checked={invertSize()} onChange={handleInvertSizeChange} class="mr-2" />
+            Invert the size?
+          </label>
+          <label class="flex items-center">
+            <input type="checkbox" id="keep_original_size" checked={KeepOriginalSize()} onChange={handleKeepOriginalSize} class="mr-2" />
+            Keep original size?
+          </label>
+        </div>
       </div>
     </div>
   );

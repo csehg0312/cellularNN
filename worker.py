@@ -1,5 +1,7 @@
 import subprocess
 import os
+import signal
+import sys
 
 def run_worker():
     # Path to the Julia executable
@@ -12,8 +14,8 @@ def run_worker():
     julia_script = f"""
         using Pkg
         Pkg.activate("{julia_env_path}")  # Activate your Julia environment
-        Pkg.instantiate()  # Ensure all dependencies are installed
         using JuliaWorker
+        Pkg.instantiate()
         JuliaWorker.main()
     """
 
@@ -23,14 +25,48 @@ def run_worker():
 
     # Call the Julia script using subprocess
     try:
-        result = subprocess.run([julia_executable, "temp_script.jl"], capture_output=True, text=True, check=True)
-        print("Output from Julia:")
-        print(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print("Error calling Julia:")
-        print(e.stderr)
+        # Use Popen for more control
+        process = subprocess.Popen(
+            [julia_executable, "temp_script.jl"], 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True
+        )
+
+        # Setup signal handling
+        def signal_handler(signum, frame):
+            print("\nInterrupt received, terminating Julia process...")
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+
+        # Read output in real-time
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+
+        # Check return code
+        return_code = process.poll()
+        if return_code != 0:
+            print("Error calling Julia:")
+            print(process.stderr.read())
+            
+    except Exception as e:
+        print(f"An error occurred: {e}")
     finally: 
-        os.remove("temp_script.jl")
+        # Clean up temporary script
+        try:
+            os.remove("temp_script.jl")
+        except OSError:
+            pass
 
 if __name__ == "__main__":
     run_worker()

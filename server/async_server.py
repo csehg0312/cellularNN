@@ -9,6 +9,7 @@ import datetime
 import json
 import websockets
 from pathlib import Path
+from handlers.client_handler import ClientHandler
 
 import numpy as np
 from config.config import get_available_port
@@ -83,7 +84,7 @@ class AsyncServer:
         app.router.add_static('/assets', path=dist_path / 'assets', name='assets')
         app.add_routes([
             web.post('/tasks', self.handle_request),
-            web.get('/ws', self.websocket_handler),  
+            web.get('/ws/{task_id}', self.websocket_handler),  
             web.get('/', self.handle_index)          
         ])        
         self.app_runner = web.AppRunner(app)
@@ -121,40 +122,12 @@ class AsyncServer:
                 await self.log_to_file(f"An error occurred in main loop: {e}")
 
     async def websocket_handler(self, request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)        
-        task_id = request.query.get('task_id') 
-        if not task_id:
-            await ws.send_str(json.dumps({'error': 'Missing task_id in query parameters'}))
-            return ws
+        """Handles incoming WebSocket connections."""
+        task_id = request.match_info['task_id']
 
-        async for msg in ws:
-            if msg.type == np.float32:
-                try:
-                    # Convert the binary data directly to a NumPy array to a NumPy array
-                    image_np = msg
-
-                    # Get other task data from Redis
-                    task_data_json = await self.redis_client.get(f'task:data:{task_id}')
-                    if task_data_json is None:
-                        await ws.send_str(json.dumps({'error': 'Task data not found in Redis'}))
-                        continue
-                    
-                    task_data = json.loads(task_data_json)
-
-                    # Combine NumPy array data with other task data
-                    combined_data = task_data.copy()
-                    combined_data['array'] = image_np.tolist()  # Store NumPy array as list
-
-                    # Push combined data to Redis queue
-                    await self.redis_client.lpush('queue:task_queue', json.dumps(combined_data))
-                    await ws.send_str(json.dumps({'status': 'NumPy array received and queued'}))
-                except Exception as e:
-                    await ws.send_str(json.dumps({'error': str(e)}))
-            elif msg.type == aiohttp.WSMsgType.ERROR:
-                print(f'ws connection closed with exception {ws.exception()}')
-
-        return ws
+        # Ensure a ClientHandler exists for this task
+        handler = ClientHandler(self, request, task_id)
+        return await handler.handle_websocket()
 
 
     async def notify_websockets(self, message):
@@ -255,33 +228,22 @@ class AsyncServer:
         await self.rate_limiter.acquire()
 
         if request.method == 'POST':
+            if request.content_type != 'application/json':
+                raise ValueError("Invalid content type")
+
             data = await request.json()
             if data is None:
                 raise ValueError("Request body is null or empty")
 
-            if data.get('available_port') is None:
-                raise ValueError("available_port is null or empty")
+            # if data.get('available_port') is None:
+            #     raise ValueError("available_port is null or empty")
 
             task_id = str(uuid.uuid4())
-            if self.redis_client is None:
-                raise ValueError("Redis client is null")
 
-            # Store the incoming JSON to Redis database as the key
-            await self.redis_client.set(f'task:data:{task_id}', json.dumps(data))
-
-            # Push task_id to task queue
-            await self.redis_client.lpush('queue:task_queue', task_id)
-            
-            # Construct the websocket URL
-            port_start, port_end = load_clients_config()
-            websocket_url = f"ws://{self.host}:{get_available_port(port_start, port_end)}/ws" 
-
-            return web.json_response({
-                'server_response': "All data received successfully!",
-                'response_status': 200,
-                'task_id': task_id,
-                'websocket_url': websocket_url,  # Include the websocket URL in the response
-            })
+            # Create an instance of ClientHandler to handle the request
+            client_handler = ClientHandler(self, request, task_id)
+            response = await client_handler.handle_request(data)
+            return response
 
     async def handle_tasks(self):
         while self.running:

@@ -2,10 +2,24 @@ import { createComponent, createSignal } from 'solid-js';
 import styles from './Home.module.css';
 
 function Navbar() {
+  const [isOpen, setIsOpen] = createSignal(false);
+
+  const toggleMenu = () => {
+    setIsOpen(!isOpen());
+  };
+
   return (
     <nav className="py-6 bg-custom-darkGray text-custom-white border border-custom-graphite shadow-sm">
-      <div className="container mx-auto flex justify-center items-center space-x-16 px-8">
-        <ul className="flex space-x-8">
+      <div className="container mx-auto flex justify-between items-center px-8">
+        <div className="flex items-center">
+          <button
+            onClick={toggleMenu}
+            className="text-custom-white focus:outline-none md:hidden"
+          >
+            {isOpen() ? "Close" : "Menu"}
+          </button>
+        </div>
+        <ul className={`flex-col space-y-4 ${isOpen() ? "flex" : "hidden"} md:flex md:flex-row md:space-x-8`}>
           <li>
             <a
               href="/photocnn"

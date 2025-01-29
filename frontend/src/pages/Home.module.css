@@ -1,19 +1,42 @@
-/* .container{
-    margin: 0 !important;
-} */
 
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* Ensure consistent box sizing */
+}
 @media only screen and (min-width: 361px) {
     .container {
         background-color: blue !important; 
         color: #f0f0f0;
     }
+    nav ul {
+        list-style: none; /* Remove default list styles */
+        padding: 0; /* Remove default padding */
+        margin: 0; /* Remove default margin */
+        display: flex; /* Use flexbox for layout */
+        align-items: center; /* Center items vertically */
     }
     
-    @media only screen and (max-width: 360px) {
+    nav li {
+        display: flex; /* Ensure each list item is a flex container */
+        align-items: center; /* Center items vertically */
+        margin: 0; /* Ensure no margin affects alignment */
+    }
+    
+    nav a {
+        margin: 0; /* Remove any margin */
+        padding: 0.5rem 1rem; /* Set consistent padding */
+        line-height: 1.5; /* Ensure consistent line height */
+        text-decoration: none; /* Remove underline */
+        color: inherit; /* Inherit color from parent */
+    }
+}
+
+@media only screen and (max-width: 360px) {
     .container {
         background-image: url('../assets/mobile-modern.svg') !important;
         color: #f0f0f0 !important;
         background-position: center !important;
         background-size: contain !important; 
     }
-    }
+}

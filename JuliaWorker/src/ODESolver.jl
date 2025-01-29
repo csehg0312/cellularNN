@@ -13,12 +13,16 @@ export solve_ode
 function f!(du, u, p, t)
     Ib, Bu, tempA, n, m = p
     x_mat = reshape(u, n, m)
+    # Apply activation function to each element of x_mat
     @turbo for i in eachindex(x_mat)
         x_mat[i] = Activation.safe_activation(x_mat[i])
     end
+    # Perform 2D convolution using FFT
     conv_result = LinearConvolution.fftconvolve2d(x_mat, tempA)
+    # Compute the derivative du for each element, ensuring it's clamped
     @turbo for i in eachindex(du)
         du[i] = clamp(-u[i] + Ib + Bu[i] + conv_result[i], -1e6, 1e6)
+    # end of the function
     end
 end
 
@@ -61,11 +65,17 @@ end
 function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64)
     SocketLogger.write_log_to_socket(socket_conn, "Starting ODE solver...\n")
     n, m = size(image)
-
     # Prepare initial conditions
-    z0 = fill(initial_condition, n * m)
+    @turbo for i in eachindex(out_l)
+        image_normalized = (image[i] / 127.5) - 1
+    end
+    @turbo for i in eachindex(initial_condition)
+        z0 = (initial_condition[i] / 127.5) - 1
+    end
+    # z0 = fill(initial_condition, n * m)
     SocketLogger.write_log_to_socket(socket_conn, "Before Bu init")
-    Bu = fftconvolve2d(image, tempB)
+
+    Bu = fftconvolve2d(image_normalized, tempB)
     SocketLogger.write_log_to_socket(socket_conn, "After Bu init")
     params = (Ib, Bu, tempA, n, m)
 
@@ -97,17 +107,17 @@ function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matr
     out_l = reshape(z, n, m)
 
     SocketLogger.write_log_to_socket(socket_conn, "Normalizing data\n")
-    # Normalize to [0, 1] range
-    min_val, max_val = extrema(out_l)
+    # Normalize to [0, 255] range
+    # min_val, max_val = extrema(out_l)
     @turbo for i in eachindex(out_l)
-        out_l[i] = (out_l[i] - min_val) / (max_val - min_val)
+        out_l[i] = (out_l[i] * 127.5) + 1
     end
 
-    SocketLogger.write_log_to_socket(socket_conn, "Clamping and scaling data\n")
-    # Clamp and scale to 0-255
-    @turbo for i in eachindex(out_l)
-        out_l[i] = round(UInt8, clamp(out_l[i], 0.0, 1.0) * 255)
-    end
+    # SocketLogger.write_log_to_socket(socket_conn, "Clamping and scaling data\n")
+    # # Clamp and scale to 0-255
+    # @turbo for i in eachindex(out_l)
+    #     out_l[i] = round(UInt8, clamp(out_l[i], 0.0, 1.0) * 255)
+    # end
 
     return out_l
 end

@@ -7,6 +7,10 @@ include("SocketLogger.jl")
 
 using CUDA
 using Sundials
+using Images
+using FileIO
+using Base64
+using WebSockets
 
 export solve_ode
 
@@ -103,15 +107,28 @@ function ode_result_process(z, n, m)
     return out_l
 end
 
-function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64)
+function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64, wsocket)
     SocketLogger.write_log_to_socket(socket_conn, "Starting ODE solver...\n")
+    WebSockets.write(wsocket, "Started ODE solver...")
     n, m = size(image)
 
+    # Normalize incoming image from [0, 255] to [-1, 1]
+    image_normalized = similar(image)
+    @cuda threads=256 for i in eachindex(image)
+        image_normalized[i] = (image[i] / 127.5) - 1  # Normalize to [-1, 1]
+    end
+
     # Prepare initial conditions
-    z0 = fill(initial_condition, n * m)
+    z0 = similar(image_normalized)
+    @cuda threads=256 for i in eachindex(image_normalized)
+        z0[i] = initial_condition * image_normalized[i]
+    end
+
     SocketLogger.write_log_to_socket(socket_conn, "Before Bu init")
-    Bu = fftconvolve2d(image, tempB)
+    WebSockets.write(wsocket, "First convolution started")
+    Bu = fftconvolve2d(image_normalized, tempB)  # Assuming this function is optimized for CUDA
     SocketLogger.write_log_to_socket(socket_conn, "After Bu init")
+    WebSockets.write(wsocket, "First convolution ended")
     params = (Ib, Bu, tempA, n, m)
 
     # Set up and solve ODE problem
@@ -119,12 +136,29 @@ function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matr
     prob = ODEProblem(f!, z0, (t_span[1], t_span[end]), params)
     sol = solve(prob, CVODE_BDF(linear_solver=:GMRES), reltol=1e-5, abstol=1e-8, maxiters=1000000)
     SocketLogger.write_log_to_socket(socket_conn, "After ODE problem")
+    WebSockets.write(wsocket, "ODE solved")
 
     # Process results
     z = sol[end]
     out_l = ode_result_process(z, n, m)
 
-    return out_l
+    # Normalize out_l back to [0, 255]
+    @cuda threads=256 for i in eachindex(out_l)
+        out_l[i] = clamp(round(UInt8, (out_l[i] + 1) * 127.5), 0, 255)  # Normalize back to [0, 255]
+    end
+
+    # Convert to binary image format
+    binary_image = Gray.(out_l ./ 255)  # Normalize to 0 or 1
+    
+    # Encode the binary image as PNG into an IOBuffer
+    io = IOBuffer()
+    FileIO.save(Stream(format"PNG", io), binary_image)
+    binary_data = take!(io)
+    
+    img_base64 = base64encode(binary_data)
+    image_packet = "data:image/png;base64,$img_base64"
+
+    return image_packet
 end
 
 end

@@ -7,11 +7,16 @@ include("SocketLogger.jl")
 
 using LoopVectorization
 using Sundials
+using Images
+using FileIO
+using Base64
+using WebSockets
 
 export solve_ode
 
 function f!(du, u, p, t)
-    Ib, Bu, tempA, n, m = p
+    Ib, Bu, tempA, n, m, wsocket = p
+    WebSockets.write(wsocket, "Solving at $t time")
     x_mat = reshape(u, n, m)
     # Apply activation function to each element of x_mat
     @turbo for i in eachindex(x_mat)
@@ -62,28 +67,35 @@ end
 #     return output
 # end
 
-function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64)
+function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64, wsocket)
     SocketLogger.write_log_to_socket(socket_conn, "Starting ODE solver...\n")
+    WebSockets.write(wsocket, "Started ODE solver...")
     n, m = size(image)
     # Prepare initial conditions
-    @turbo for i in eachindex(out_l)
-        image_normalized = (image[i] / 127.5) - 1
+    image_normalized = similar(image)
+    @turbo for i in eachindex(image)
+        image_normalized[i] = (image[i] / 127.5) - 1
     end
-    @turbo for i in eachindex(initial_condition)
-        z0 = (initial_condition[i] / 127.5) - 1
+    z0 = similar(image_normalized)
+    @turbo for i in eachindex(image_normalized)
+        z0[i] = initial_condition * image_normalized[i]
     end
     # z0 = fill(initial_condition, n * m)
     SocketLogger.write_log_to_socket(socket_conn, "Before Bu init")
+    WebSockets.write(wsocket, "First convolution started")
 
     Bu = fftconvolve2d(image_normalized, tempB)
     SocketLogger.write_log_to_socket(socket_conn, "After Bu init")
-    params = (Ib, Bu, tempA, n, m)
+    WebSockets.write(wsocket, "First convolution ended")
+    params = (Ib, Bu, tempA, n, m, wsocket)
 
     # Set up and solve ODE problem
     SocketLogger.write_log_to_socket(socket_conn, "Before ODE problem")
+    WebSockets.write(wsocket, "ODE Solver started!")
     prob = ODEProblem(f!, z0, (t_span[1], t_span[end]), params)
     sol = solve(prob, CVODE_BDF(linear_solver=:GMRES), reltol=1e-5, abstol=1e-8, maxiters=1000000)
     SocketLogger.write_log_to_socket(socket_conn, "After ODE problem")
+    WebSockets.write(wsocket, "ODE solved")
     # open("solution_output.txt", "w") do file
     #     for j in 1:length(sol)
     #         # Print the timestep header
@@ -107,19 +119,27 @@ function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matr
     out_l = reshape(z, n, m)
 
     SocketLogger.write_log_to_socket(socket_conn, "Normalizing data\n")
+    WebSockets.write(wsocket, "Data being normalized")
     # Normalize to [0, 255] range
-    # min_val, max_val = extrema(out_l)
+    # Normalize and threshold to binary (0 or 255)
+    threshold = 0.5  # Define threshold for binarization
     @turbo for i in eachindex(out_l)
         out_l[i] = (out_l[i] * 127.5) + 1
+        out_l[i] = (out_l[i] > threshold * 255) ? 255 : 0  # Ensure values are exactly 0 or 255
     end
+    
+     # Convert to binary image format
+     binary_image = Gray.(out_l ./ 255)  # Normalize to 0 or 1
+    
+     # Encode the binary image as PNG into an IOBuffer
+     io = IOBuffer()
+     FileIO.save(Stream(format"PNG", io), binary_image)
+     binary_data = take!(io)
+     
+     img_base64 = base64encode(binary_data)
+     image_packet = "data:image/png;base64,$img_base64"
 
-    # SocketLogger.write_log_to_socket(socket_conn, "Clamping and scaling data\n")
-    # # Clamp and scale to 0-255
-    # @turbo for i in eachindex(out_l)
-    #     out_l[i] = round(UInt8, clamp(out_l[i], 0.0, 1.0) * 255)
-    # end
-
-    return out_l
+    return image_packet
 end
 
 end

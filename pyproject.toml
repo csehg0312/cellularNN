@@ -19,6 +19,7 @@ gradio = "^5.5.0"
 pillow = "^11.0.0"
 websocket = "^0.2.1"
 websocket-client = "^1.8.0"
+pickle4 = "^0.0.1"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1475,6 +1475,19 @@ test = ["hypothesis (>=6.46.1)", "pytest (>=7.3.2)", "pytest-xdist (>=2.2.0)"]
 xml = ["lxml (>=4.9.2)"]
 
 [[package]]
+name = "pickle4"
+version = "0.0.1"
+description = "Backport of pickle protocol 4"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pickle4-0.0.1.tar.gz", hash = "sha256:23f32ba65d7548fb8490badf3349cfa45abf80e81409e598a10090fb832488df"},
+]
+
+[package.dependencies]
+setuptools = "*"
+
+[[package]]
 name = "pillow"
 version = "11.0.0"
 description = "Python Imaging Library (Fork)"
@@ -2519,4 +2532,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "052a2a330564bd08efe0930eb6b57d38b25c38eb9baf103b6d45eaec61aa869a"
+content-hash = "eb8a4f47019369f9df2ad9a4a695da23602c4c2e8b3d29a5cd4e09a7f4ceaab2"

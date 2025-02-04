@@ -8,21 +8,94 @@ function isLocalhost() {
 }
 
 function PhotoCNN() {
+
+  // Setting parameters:
+  // image - The image user uploads
+  // outputImage - The one is received back from the worker
+  // loading - responsible for animation
+  // serverUrl - Link to the server 
   const [image, setImage] = createSignal(null);
   const [outputImage, setOutputImage] = createSignal(null);
   const [loading, setLoading] = createSignal(false);
   const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/tasks' : '/tasks');
-  const [selectedSize, setSelectedSize] = createSignal('320x240'); // default size
-  const [invertSize, setInvertSize] = createSignal(false);
-  const [KeepOriginalSize, setKeepOriginalSize] = createSignal(false);
   const [selectedMode, setSelectedMode] = createSignal('edge_detect_'); 
 
   // New state to handle notification
   const [responseMessage, setResponseMessage] = createSignal(null);
   const [responseStatus, setResponseStatus] = createSignal(null);
+  const [logMessages, setLogMessages] = createSignal([]);
 
   const handleModeChange = (e) => {
     setSelectedMode(e.target.value);
+  };
+
+  const handleWebSocketMessage = async (event) => {
+    try {
+      console.log('Raw WebSocket message:', event.data);
+      
+      // Check if the message is a string starting with "WebSocket"
+      if (typeof event.data === 'string' && event.data.startsWith('WebSocket')) {
+        setLogMessages(prev => [...prev, `Info message: ${event.data}`]);
+        return;
+      }
+      
+      // Try to parse as JSON for other messages
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch (parseError) {
+        // If it's not JSON and not a WebSocket info message, log as plain text
+        setLogMessages(prev => [...prev, `Plain text message: ${event.data}`]);
+        return;
+      }
+  
+      // Handle JSON messages
+      setLogMessages(prev => [...prev, `Parsed message type: ${data.type}`]);
+      
+      if (data.type === 'image' && typeof data.data === 'string') {
+        setLogMessages(prev => [...prev, 'Received image data']);
+        
+        if (data.data.startsWith('data:image/')) {
+          setLogMessages(prev => [...prev, 'Valid image data format detected']);
+          
+          try {
+            // Extract the MIME type
+            const mimeType = data.data.split(';')[0].split(':')[1];
+            setLogMessages(prev => [...prev, `MIME type: ${mimeType}`]);
+  
+            // Convert base64 to Blob
+            const base64Data = data.data.split(',')[1];
+            const byteCharacters = atob(base64Data);
+            const byteArray = new Uint8Array(byteCharacters.length);
+            
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteArray[i] = byteCharacters.charCodeAt(i);
+            }
+            
+            const blob = new Blob([byteArray], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            
+            setOutputImage(url);
+            setLogMessages(prev => [...prev, 'Successfully created and set image URL']);
+          } catch (blobError) {
+            setLogMessages(prev => [...prev, `Error creating blob: ${blobError.message}`]);
+          }
+        } else {
+          setLogMessages(prev => [...prev, 'Invalid image data format - missing data:image/ prefix']);
+        }
+      } else if (data.type === 'progress') {
+        // Handle progress updates
+        setLogMessages(prev => [...prev, `Progress: ${data.message || data.data}`]);
+      } else if (data.type === 'error') {
+        // Handle error messages
+        setLogMessages(prev => [...prev, `Server error: ${data.message || data.data}`]);
+      } else {
+        // Log other types of messages
+        setLogMessages(prev => [...prev, `Other message: ${JSON.stringify(data)}`]);
+      }
+    } catch (error) {
+      setLogMessages(prev => [...prev, `General error handling message: ${error.message}`]);
+    }
   };
 
   const handleImageChange = (e) => {
@@ -57,20 +130,6 @@ function PhotoCNN() {
     event.preventDefault();
   };
 
-  const handleSizeChange = (e) => {
-    setSelectedSize(e.target.value);
-  };
-
-  const handleInvertSizeChange = (e) => {
-    setInvertSize(e.target.checked);
-    setKeepOriginalSize(!e.target.checked);
-  };
-
-  const handleKeepOriginalSize = (e) => {
-    setKeepOriginalSize(e.target.checked);
-    setInvertSize(!e.target.checked);
-  };
-
   const closeNotification = () => {
     setResponseMessage(null);
     setResponseStatus(null);
@@ -84,11 +143,7 @@ function PhotoCNN() {
     // Create a JSON object to send
     const jsonData = {
       image: image(),
-      keep_original_size: KeepOriginalSize(),
-      size: selectedSize(),
-      invert_size: invertSize(),
       mode: selectedMode(),
-      available_port: 5050
     };
 
     try {
@@ -107,28 +162,17 @@ function PhotoCNN() {
         console.log(jsonResponse);
         const wsUrl = jsonResponse.websocket_url;
 
-
         const socket = new WebSocket(wsUrl);
 
         socket.onopen = function(event) {
           console.log("WebSocket is open now.");
         };
 
-        socket.onmessage = function(event) {
-          console.log("Message from server: ", event.data);
-        };
-        
-        socket.onclose = function(event) {
-            console.log("WebSocket is closed now.");
-        };
-        
-        socket.onerror = function(error) {
-            console.error("WebSocket error: ", error);
-        };
+        socket.onmessage = handleWebSocketMessage;
 
-        // const url = URL.createObjectURL(blob);
-        // setOutputImage(url);
-
+        
+        socket.onclose = () => setLogMessages([...logMessages(), 'WebSocket closed.']);
+        socket.onerror = (error) => setLogMessages([...logMessages(), `WebSocket error: ${error}`]);
 
         setResponseMessage("Upload successful!");
         setResponseStatus(200); // Successful status
@@ -195,12 +239,17 @@ function PhotoCNN() {
           </div>
         )}
 
+        {console.log('Output image:', outputImage())}
         {outputImage() && (
           <div class="flex flex-col items-center">
             <h3 class="mb-2">Output Image:</h3>
             <img src={outputImage()} alt="Processed" class="w-full max-w-sm" />
           </div>
         )}
+        <div class="bg-gray-800 p-3 mt-4 w-full max-w-md overflow-y-auto h-32 border border-gray-600 rounded">
+          <h3 class="text-sm font-bold">Logs:</h3>
+          <div class="text-xs whitespace-pre-wrap">{logMessages().join('\n')}</div>
+        </div>
 
       </div>
 
@@ -253,24 +302,6 @@ function PhotoCNN() {
             <option value="saved_">Saved</option>
           </optgroup>
         </select>
-
-        <div class="flex flex-col items-center mb-4">
-          <h4 class="mb-2">Image size to use <br/> (Kimeneti kép mérete):</h4>
-          <select value={selectedSize()} onChange={handleSizeChange} disabled={KeepOriginalSize() ? true : false} class="bg-black mb-2 border border-gray-300 p-2 rounded">
-            <option value="320x240">320x240</option>
-            <option value="640x480">640x480</option>
-            <option value="960x540">960x540</option>
-            <option value="1280x720">1280x720</option>
-          </select>
-          <label class="flex items-center mb-2">
-            <input type="checkbox" id="invert_size" checked={invertSize()} onChange={handleInvertSizeChange} class="mr-2" />
-            Invert the size?
-          </label>
-          <label class="flex items-center">
-            <input type="checkbox" id="keep_original_size" checked={KeepOriginalSize()} onChange={handleKeepOriginalSize} class="mr-2" />
-            Keep original size?
-          </label>
-        </div>
       </div>
     </div>
   );

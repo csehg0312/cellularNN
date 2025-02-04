@@ -99,75 +99,60 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
                     
                     if stored_data !== nothing
                         SocketLogger.write_log_to_socket(socket_conn, "Retrieved stored data! \n")
-                        # Process the task data (assuming it's in JSON format)
                         try
                             processed_data = JSON.parse(stored_data)
-
+                    
                             # Convert the image and controlB arrays to Float64
                             image = [Float64.(row) for row in processed_data["image"]]
-                            # SocketLogger.write_log_to_socket(socket_conn, "Image: ", typeof(image), "\n")
                             controlB = [Float64.(row) for row in processed_data["controlB"]]
-                            # SocketLogger.write_log_to_socket(socket_conn, "ControlB: ", typeof(controlB), "\n")
                             feedbackA = [Float64.(row) for row in processed_data["feedbackA"]]
-                            # SocketLogger.write_log_to_socket(socket_conn, "FeedbackA: ", typeof(feedbackA), "\n")
                             t_span = convert(Vector{Float64}, processed_data["t_span"])
-                            # SocketLogger.write_log_to_socket(socket_conn, "t_span:", typeof(t_span),"\n")
                             Ib = Float64(processed_data["Ib"])
-                            # SocketLogger.write_log_to_socket(socket_conn, "Ib: ", typeof(Ib), "\n")
                             initialCondition = Float64(processed_data["initialCondition"])
-                            # SocketLogger.write_log_to_socket(socket_conn, "initialCondition: ", typeof(initialCondition), "\n")
-
-                             # Ensure the arrays are matrices
+                    
+                            # Ensure the arrays are matrices
                             image_matrix = hcat(image...)  # Convert to a matrix
                             controlB_matrix = hcat(controlB...)  # Convert to a matrix
                             feedbackA_matrix = hcat(feedbackA...)
-
+                    
                             # Open WebSocket connection using the port from processed_data
-                            websocket_port = processed_data["available_port"]
-                            websocket_url = "ws://127.0.0.1:$websocket_port"  # Construct the WebSocket URL
+                            websocket_url = processed_data["websocket"]
+                            SocketLogger.write_log_to_socket(socket_conn, "Attempting to connect to WebSocket: $websocket_url\n")
+                    
+                            # Open the WebSocket connection with error handling
                             try
                                 WebSockets.open(websocket_url) do ws
-                                    # Log connection
                                     SocketLogger.write_log_to_socket(socket_conn, "Connected to client socket! \n")
-                                    WebSockets.write(ws, "Connection happened!")
-                            
                                     try
-                                        # Log processing task
+                                        WebSockets.write(ws, "Connection happened!")
+                                    catch e
+                                        SocketLogger.write_log_to_socket(socket_conn, "Error writing to WebSocket: $e\n")
+                                        return  # Exit the WebSockets.open block
+                                    end
+
+                                    try
                                         SocketLogger.write_log_to_socket(socket_conn, "Processing task...\n")
-                                        ode_result = ODESolver.solve_ode(socket_conn, image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition)
-                            
+                                        ode_result = ODESolver.solve_ode(socket_conn, image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition, ws)
+
                                         # Log processed task
                                         processed = JSON.json(ode_result)
-                                        WebSockets.write(ws, processed)
-                                        # Log processed task
-                                        SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
+                                        try
+                                            WebSockets.write(ws, processed)
+                                            SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
+                                        catch e
+                                            SocketLogger.write_log_to_socket(socket_conn, "Error sending processed task to client: $e\n")
+                                        end
                                     catch e
-                                        # Log error if processing fails
                                         SocketLogger.write_log_to_socket(socket_conn, "Error processing task: $e\n")
-                                        processed = nothing
                                     end
                                 end
-                                cleanup(ws)
-                                WebSockets.close(ws)
                             catch e
-                                # Log error if connection fails
                                 SocketLogger.write_log_to_socket(socket_conn, "Error connecting to client socket: $e\n")
-                                processed = nothing
+                                # Optionally, retry the WebSocket connection here
                             end
-                            
-                            
-                            # Delete the processed task data from Redis
-                            Redis.del(redis_client, "task:data:$task_id")
-                            SocketLogger.write_log_to_socket(socket_conn, "Deleted processed task data for ID: $task_id\n")
-
-                        
                         catch e
-                            SocketLogger.write_log_to_socket(socket_conn, "Failed to parse task data! \nError: $e\n")
-                            processed = nothing
+                            SocketLogger.write_log_to_socket(socket_conn, "Error parsing stored data: $e\n")
                         end
-                    else
-                        SocketLogger.write_log_to_socket(socket_conn, "No stored data found for task ID: $task_id\n")
-                        processed = nothing
                     end
                 end
                 

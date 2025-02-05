@@ -4,9 +4,14 @@ import gc
 #Creating the basic cnn parameters
 #parameters source: https://github.com/ankitaggarwal011/PyCNN
 #EdgeDetection
-edge_detect_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
-edge_detect_B = np.array([[-1.0, -1.0, -1.0], [-1.0, 8.0, -1.0], [-1.0, -1.0, -1.0]])
-edge_detect_t = np.linspace(0, 10.0, num=2)
+edge_detect_A = np.array([[0.0, 0.0, 0.0], 
+                          [0.0, 1.0, 0.0], 
+                          [0.0, 0.0, 0.0]])
+edge_detect_B = np.array([[-1.0, -1.0, -1.0], 
+                          [-1.0, 8.0, -1.0], 
+                          [-1.0, -1.0, -1.0]])
+
+edge_detect_t = np.arange(1.0, 5.0+0.01, 0.01)
 edge_detect_Ib = -1.0
 edge_detect_init = 0.0
 
@@ -14,14 +19,16 @@ edge_detect_init = 0.0
 grayscale_edge_detect_A = np.array([[0.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 0.0]])
 grayscale_edge_detect_B = np.array([[-1.0, -1.0, -1.0], [-1.0, 8.0, -1.0], [-1.0, -1.0, -1.0]])
 grayscale_edge_detect_t = np.linspace(0, 1.0, num=101)
-grayscale_edge_detect_Ib = -0.5
+grayscale_edge_detect_Ib = 0.0
 grayscale_edge_detect_init = 0.0
 
 #Corner Detection
 corner_detect_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
-corner_detect_B = np.array([[-1.0, -1.0, -1.0], [-1.0, 4.0, -1.0], [-1.0, -1.0, -1.0]])
-corner_detect_t = np.linspace(0, 10.0, num=11)
-corner_detect_Ib = -5.0
+corner_detect_B = np.array([[-1.0, 0.0, 1.0], 
+                            [0.0, 0.0, 0.0], 
+                            [1.0, 0.0, -1.0]])
+corner_detect_t = np.arange(1.0, 3.0+0.01, 0.01)
+corner_detect_Ib = 0.0
 corner_detect_init = 0.0
 
 #Diagonal line Detection
@@ -46,24 +53,32 @@ optimal_edge_detect_Ib = 0.0
 optimal_edge_detect_init = 0.0
 
 # Horizontal Line Detection
-horizontal_line_detect_A = np.array([[0.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 0.0]])
-horizontal_line_detect_B = np.array([[0.0, 1.0, 0.0], [0.0, 1.0, 0.0], [0.0, 1.0, 0.0]])
-horizontal_line_detect_t = np.linspace(0, 1.0, num=101)
-horizontal_line_detect_Ib = -3.0
+horizontal_line_detect_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
+horizontal_line_detect_B = np.array([[0.0, -1.0, 0.0], 
+                                     [-1.0, 5.0, -1.0], 
+                                     [0.0, -1.0, 0.0]])
+horizontal_line_detect_t = np.arange(1.0, 3.0+0.01, 0.01)
+horizontal_line_detect_Ib = 0.0
 horizontal_line_detect_init = 0.0
 
 # Vertical Line Detection
 vertical_line_detect_A = np.array([[0.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 0.0]])
-vertical_line_detect_B = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [0.0, 0.0, 0.0]])
-vertical_line_detect_t = np.linspace(0, 1.0, num=101)
+vertical_line_detect_B = np.array([[0.0, 1.0, 0.0], 
+                                   [0.0, 1.0, 0.0], 
+                                   [0.0, 1.0, 0.0]])
+vertical_line_detect_t = np.arange(1.0, 3.0+0.01, 0.01)
 vertical_line_detect_Ib = -3.0
 vertical_line_detect_init = 0.0
 
 # Noise Removal
-noise_removal_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
-noise_removal_B = np.array([[0.2, 0.2, 0.2], [0.2, 2.0, 0.2], [0.2, 0.2, 0.2]])
-noise_removal_t = np.linspace(0, 5.0, num=101)
-noise_removal_Ib = -1.0
+noise_removal_A = np.array([[0.0, 0.0, 0.0], 
+                            [0.0, 1.0, 0.0], 
+                            [0.0, 0.0, 0.0]])
+noise_removal_B = np.array([[0.05, 0.1, 0.05], 
+                            [0.1, 0.4, 0.1], 
+                            [0.05, 0.1, 0.05]])
+noise_removal_t = np.arange(10.0, 20.0+0.1, 0.1)
+noise_removal_Ib = 0.0
 noise_removal_init = 0.0
 
 # Shadow Detection
@@ -81,10 +96,12 @@ connected_comp_Ib = -0.5
 connected_comp_init = 0.0
 
 # Image Sharpening
-sharpen_A = np.array([[0.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 0.0]])
-sharpen_B = np.array([[-0.25, -0.5, -0.25], [-0.5, 5.0, -0.5], [-0.25, -0.5, -0.25]])
-sharpen_t = np.linspace(0, 1.0, num=101)
-sharpen_Ib = -1.0
+sharpen_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
+sharpen_B = np.array([[0.0,-1.0,0.0],
+                      [-1.0,5.0,-1.0],
+                      [0.0,-1.0,0.0]])
+sharpen_t = np.arange(1.0, 2.0+0.01, 0.01)
+sharpen_Ib = 0.0
 sharpen_init = 0.0
 
 # Blob Detection
@@ -95,9 +112,13 @@ blob_detect_Ib = 3.0
 blob_detect_init = 0.0
 
 # Texture Segmentation
-texture_segment_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
-texture_segment_B = np.array([[0.5, 1.0, 0.5], [1.0, 3.0, 1.0], [0.5, 1.0, 0.5]])
-texture_segment_t = np.linspace(0, 2.0, num=101)
+texture_segment_A = np.array([[0.0, 0.0, 0.0], 
+                              [0.0, 1.0, 0.0], 
+                              [0.0, 0.0, 0.0]])
+texture_segment_B = np.array([[0.5, 1.0, 0.5], 
+                              [1.0, 3.0, 1.0], 
+                              [0.5, 1.0, 0.5]])
+texture_segment_t = np.arange(0, 2.0+0.01,0.01)
 texture_segment_Ib = -4.5
 texture_segment_init = 0.0
 
@@ -121,6 +142,28 @@ edge_enhance_B = np.array([[-0.1, -0.1, -0.1], [-0.1, 2.0, -0.1], [-0.1, -0.1, -
 edge_enhance_t = np.linspace(0, 1.0, num=101)
 edge_enhance_Ib = -0.2
 edge_enhance_init = 0.0
+
+# Laplacian Edge Detect
+laplacian_edge_A = np.array([[0.0, 0.0, 0.0],
+                       [0.0, 1.0, 0.0],
+                       [0.0, 0.0, 0.0]])
+laplacian_edge_B = np.array([[0.0,1.0,0.0],
+                        [1.0,-4.0,1.0],
+                        [0.0,1.0,0.0]])
+laplacian_edge_t = np.arange(1.0,5.0+0.01,0.01)
+laplacian_Ib = 0.0
+laplacian_init = 0.0
+
+#Diffusion
+diffusion_A = np.array([[0.0, 0.0, 0.0],
+                       [0.0, 1.0, 0.0],
+                       [0.0, 0.0, 0.0]])
+diffusion_B = np.array([[0.1,0.15,0.1],
+                        [0.15,0.2,0.15],
+                        [0.1,0.15,0.1]])
+diffusion_t = np.arange(20.0, 30.0+0.1, 0.1)
+diffusion_Ib = 0.0
+diffusion_init = 0.0
 
 #in case of saved parameters: 
 saved_A = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])

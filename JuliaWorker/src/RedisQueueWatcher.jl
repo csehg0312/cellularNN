@@ -137,7 +137,7 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
                                         # Log processed task
                                         processed = JSON.json(ode_result)
                                         try
-                                            WebSockets.write(ws, processed)
+                                            # WebSockets.write(ws, processed)
                                             SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
                                         catch e
                                             SocketLogger.write_log_to_socket(socket_conn, "Error sending processed task to client: $e\n")

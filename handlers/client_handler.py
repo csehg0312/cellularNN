@@ -22,25 +22,6 @@ class ClientHandler:
             # Handle regular HTTP requests (e.g., POST)
             return await self.handle_http(data)
 
-        # web.WebSocketResponse()
-        # self.websocket = web.WebSocketResponse()
-        # await self.websocket.prepare(self.request)
-        # self.server.connected_websockets.add(self.websocket)
-        # print(f"New connection from {self.request.remote}")
-
-
-        # # Check if Redis client is available
-        # if self.server.redis_client is None:
-        #     raise ValueError("Redis client is null")
-
-        # # Store the incoming JSON to Redis database as the key
-        # # await self.server.redis_client.set(f'task:data:{self.task_id}', json.dumps(data))
-
-        # # Push task_id to task queue
-        # # await self.server.redis_client.lpush('queue:task_queue', self.task_id)
-
-        # return self.websocket
-
     async def handle_websocket(self):
         self.websocket = web.WebSocketResponse()
         await self.websocket.prepare(self.request)
@@ -62,8 +43,8 @@ class ClientHandler:
                             image_data = image_data[1:-1] 
 
                         header, encoded = image_data.split(',', 1)
-                        print(header)
-                        print(encoded)
+                        # print(header)
+                        # print(encoded)
                     except:
                         header, encoded = None, None
                     if header == ('data:image/png;base64'):

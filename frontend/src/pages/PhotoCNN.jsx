@@ -24,6 +24,8 @@ function PhotoCNN() {
   const [responseMessage, setResponseMessage] = createSignal(null);
   const [responseStatus, setResponseStatus] = createSignal(null);
   const [logMessages, setLogMessages] = createSignal([]);
+  const [elapsedTime, setElapsedTime] = createSignal(null); // New state for elapsed time
+  const [startTime, setStartTime] = createSignal(null);
 
   const handleModeChange = (e) => {
     setSelectedMode(e.target.value);
@@ -32,66 +34,70 @@ function PhotoCNN() {
   const handleWebSocketMessage = async (event) => {
     try {
       console.log('Raw WebSocket message:', event.data);
-      
+  
+      let message = event.data;
+  
       // Check if the message is a string starting with "WebSocket"
-      if (typeof event.data === 'string' && event.data.startsWith('WebSocket')) {
-        setLogMessages(prev => [...prev, `Info message: ${event.data}`]);
+      if (typeof message === 'string' && message.startsWith('WebSocket')) {
+        setLogMessages(prev => [...prev, `Info message: ${message}`]);
         return;
       }
-      
+  
       // Try to parse as JSON for other messages
       let data;
       try {
-        data = JSON.parse(event.data);
+        data = JSON.parse(message);
       } catch (parseError) {
         // If it's not JSON and not a WebSocket info message, log as plain text
-        setLogMessages(prev => [...prev, `Plain text message: ${event.data}`]);
+        setLogMessages(prev => [...prev, `Plain text message: ${message}`]);
         return;
       }
   
       // Handle JSON messages
-      setLogMessages(prev => [...prev, `Parsed message type: ${data.type}`]);
-      
-      if (data.type === 'image' && typeof data.data === 'string') {
-        setLogMessages(prev => [...prev, 'Received image data']);
-        
-        if (data.data.startsWith('data:image/')) {
-          setLogMessages(prev => [...prev, 'Valid image data format detected']);
-          
-          try {
-            // Extract the MIME type
-            const mimeType = data.data.split(';')[0].split(':')[1];
-            setLogMessages(prev => [...prev, `MIME type: ${mimeType}`]);
+      const { type, message: msg, data: payload } = data;
+      setLogMessages(prev => [...prev, `Parsed message type: ${type}`]);
   
-            // Convert base64 to Blob
-            const base64Data = data.data.split(',')[1];
-            const byteCharacters = atob(base64Data);
-            const byteArray = new Uint8Array(byteCharacters.length);
-            
-            for (let i = 0; i < byteCharacters.length; i++) {
-              byteArray[i] = byteCharacters.charCodeAt(i);
+      switch (type) {
+        case 'image':
+          if (typeof payload === 'string' && payload.startsWith('data:image/')) {
+            const endTime = Date.now(); // Capture end time
+            setElapsedTime((endTime - startTime()) / 60000); // Convert milliseconds to minutes
+            setLogMessages(prev => [...prev, 'Valid image data format detected']);
+  
+            try {
+              const mimeType = payload.split(';')[0].split(':')[1];
+              setLogMessages(prev => [...prev, `MIME type: ${mimeType}`]);
+  
+              const base64Data = payload.split(',')[1];
+              const byteCharacters = atob(base64Data);
+              const byteArray = new Uint8Array(byteCharacters.length);
+  
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteArray[i] = byteCharacters.charCodeAt(i);
+              }
+  
+              const blob = new Blob([byteArray], { type: mimeType });
+              const url = URL.createObjectURL(blob);
+  
+              setOutputImage(url);
+              setLogMessages(prev => [...prev, 'Successfully created and set image URL']);
+            } catch (blobError) {
+              setLogMessages(prev => [...prev, `Error creating blob: ${blobError.message}`]);
             }
-            
-            const blob = new Blob([byteArray], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            
-            setOutputImage(url);
-            setLogMessages(prev => [...prev, 'Successfully created and set image URL']);
-          } catch (blobError) {
-            setLogMessages(prev => [...prev, `Error creating blob: ${blobError.message}`]);
+          } else {
+            setLogMessages(prev => [...prev, 'Invalid image data format - missing data:image/ prefix']);
           }
-        } else {
-          setLogMessages(prev => [...prev, 'Invalid image data format - missing data:image/ prefix']);
-        }
-      } else if (data.type === 'progress') {
-        // Handle progress updates
-        setLogMessages(prev => [...prev, `Progress: ${data.message || data.data}`]);
-      } else if (data.type === 'error') {
-        // Handle error messages
-        setLogMessages(prev => [...prev, `Server error: ${data.message || data.data}`]);
-      } else {
-        // Log other types of messages
-        setLogMessages(prev => [...prev, `Other message: ${JSON.stringify(data)}`]);
+          break;
+  
+        case 'progress':
+        case 'error':
+        case 'status':
+          setLogMessages(prev => [...prev, `${type}: ${msg || payload}`]);
+          break;
+  
+        default:
+          setLogMessages(prev => [...prev, `Other message: ${JSON.stringify(data)}`]);
+          break;
       }
     } catch (error) {
       setLogMessages(prev => [...prev, `General error handling message: ${error.message}`]);
@@ -166,6 +172,7 @@ function PhotoCNN() {
 
         socket.onopen = function(event) {
           console.log("WebSocket is open now.");
+          setStartTime(Date.now());
         };
 
         socket.onmessage = handleWebSocketMessage;
@@ -251,6 +258,12 @@ function PhotoCNN() {
           <div class="text-xs whitespace-pre-wrap">{logMessages().join('\n')}</div>
         </div>
 
+
+        {elapsedTime() !== null && (
+          <div class="mt-4 text-sm">
+            <strong>Elapsed Time:</strong> {elapsedTime()} minute/-s
+          </div>
+          )}
       </div>
 
       {/* Render ResponseNotification */}
@@ -276,6 +289,7 @@ function PhotoCNN() {
             <option value="grayscale_edge_detect_">Grayscale Edge Detection (Szürke él detektálás)</option>
             <option value="optimal_edge_detect_">Optimal Edge Detect</option>
             <option value="edge_enhance_">Edge enhance</option>
+            <option value="laplacian_edge_">Laplacian Edge Detect</option>
           </optgroup>
           <optgroup label="Line Detection">
             <option value="diagonal_line_detect_">Diagonal line detection</option>
@@ -287,6 +301,7 @@ function PhotoCNN() {
             <option value="noise_removal_">Noise removal</option>
             <option value="sharpen_">Sharpen</option>
             <option value="halftone_">Halftone</option>
+            <option value="diffusion_">Diffusion</option>
           </optgroup>
           <optgroup label="Object Detection">
             <option value="corner_detect_">Corner detection (Sarok detektálás)</option>

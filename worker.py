@@ -5,19 +5,17 @@ import sys
 
 def run_worker():
     # Path to the Julia executable
-    julia_executable = "julia"  # or full path to the julia executable if not in PATH
-
-    # Path to your Julia environment (make sure this is correct)
-    julia_env_path = os.path.expanduser("~/cellularnn/JuliaWorker")  # Use expanduser to handle "~"
+    julia_executable = "julia"
+    julia_env_path = os.path.expanduser("/home/csehg0312-tester/Dokumentumok/py-ai/cellularNN/JuliaWorker") # Use expanduser to handle "~"
 
     # Julia script to run your function
     julia_script = f"""
         using Pkg
         Pkg.activate("{julia_env_path}")  # Activate your Julia environment
         using JuliaWorker
-        Pkg.instantiate()
         JuliaWorker.main()
     """
+    # Pkg.instantiate()
 
     # Create a temporary file to hold the Julia script
     with open("temp_script.jl", "w") as f:

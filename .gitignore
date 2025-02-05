@@ -8,3 +8,4 @@ temp_script.jl
 .vscode
 frontend
 settings.pkl
+dist

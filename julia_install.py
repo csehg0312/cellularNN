@@ -3,7 +3,7 @@ import os
 
 def run_install():
     # Use the full path to the Julia executable
-    julia_executable = "/usr/local/bin/julia"
+    julia_executable = "julia"
     julia_env_path = os.path.expanduser("~/cellularNN/JuliaWorker")
 
     # Define the Julia script

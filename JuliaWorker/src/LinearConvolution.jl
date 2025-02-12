@@ -2,8 +2,9 @@ module LinearConvolution
 
 using ..JuliaWorker
 using FFTW
+using Distributed
 
-export fftconvolve2d
+export fftconvolve2d, parallel_fftconvolve2d
 
 function fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10) where T<:Number
     s1 = size(in1)
@@ -34,19 +35,75 @@ function fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10) where T<
     result = real(ifft(fft_result))
     result[abs.(result) .< threshold] .= 0  # Set very small values to exact zero
 
-    # Calculate the valid convolution area
-    valid_rows = s1[1] + s2[1] - 1
-    valid_cols = s1[2] + s2[2] - 1
+    # Extract the valid part of the result with same dimensions as input
+    start_row = div(s2[1] - 1, 2)
+    start_col = div(s2[2] - 1, 2)
+    return result[start_row+1:start_row+s1[1], start_col+1:start_col+s1[2]]
+end
 
-    # Extract the valid part of the result
-    valid_result = result[1:valid_rows, 1:valid_cols]
+function parallel_fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10) where T<:Number
+    s1 = size(in1)
+    s2 = size(in2)
 
-    # Calculate the start indices for centering the result
-    start_row = div(s2[1], 2)
-    start_col = div(s2[2], 2)
+    # Ensure template size is 3x3
+    @assert s2 == (3,3) "Template size must be 3x3"
+    
+    # Calculate padding needed for each block
+    pad_size = 1  # For 3x3 template, we need 1 pixel padding
 
-    # Return the centered result
-    return valid_result[start_row+1:start_row+s1[1], start_col+1:start_col+s1[2]]
+    # Split the input matrix in1 into blocks
+    num_workers = nworkers()
+    block_size = div(size(in1, 1), num_workers)
+    
+    # Create tasks for each worker
+    tasks = []
+    for i in 1:num_workers
+        start_row = (i - 1) * block_size + 1
+        end_row = i == num_workers ? size(in1, 1) : i * block_size
+        
+        # Add padding to blocks (except for boundaries)
+        pad_top = i > 1 ? pad_size : 0
+        pad_bottom = i < num_workers ? pad_size : 0
+        
+        # Extract block with padding
+        block_start = max(1, start_row - pad_top)
+        block_end = min(s1[1], end_row + pad_bottom)
+        block = in1[block_start:block_end, :]
+        
+        # Process block
+        push!(tasks, @spawn fftconvolve2d(block, in2; threshold=threshold))
+    end
+
+    # Collect results from all workers
+    results = fetch.(tasks)
+
+    # Initialize output matrix with same dimensions as input
+    output = zeros(T, s1)
+    
+    # Combine results into the output matrix
+    for (i, res) in enumerate(results)
+        start_row = (i - 1) * block_size + 1
+        end_row = i == num_workers ? s1[1] : i * block_size
+        
+        # Handle overlapping regions
+        if i > 1
+            # Blend the overlapping region with previous block
+            overlap_start = start_row
+            overlap_end = start_row + pad_size - 1
+            output[overlap_start:overlap_end, :] .= 
+                (output[overlap_start:overlap_end, :] .+ 
+                 res[1:pad_size, :]) ./ 2
+            
+            # Copy the non-overlapping part
+            output[overlap_end+1:end_row, :] .= 
+                res[pad_size+1:size(res,1)-pad_size+1, :]
+        else
+            # For first block, just copy the result
+            output[start_row:end_row, :] .= res[1:end_row-start_row+1, :]
+        end
+    end
+
+    return output
 end
 
 end

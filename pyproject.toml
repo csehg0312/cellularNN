@@ -20,6 +20,8 @@ pillow = "^11.0.0"
 websocket = "^0.2.1"
 websocket-client = "^1.8.0"
 pickle4 = "^0.0.1"
+av = "<13.0.0"
+aiortc = "^1.10.1"
 
 [build-system]
 requires = ["poetry-core"]

@@ -11,6 +11,7 @@ using Images
 using FileIO
 using Base64
 using WebSockets
+# using GC
 
 export solve_ode
 
@@ -23,12 +24,13 @@ function f!(du, u, p, t)
         x_mat[i] = Activation.safe_activation(x_mat[i])
     end
     # Perform 2D convolution using FFT
-    conv_result = LinearConvolution.fftconvolve2d(x_mat, tempA)
+    conv_result = LinearConvolution.parallel_fftconvolve2d(x_mat, tempA)
     # Compute the derivative du for each element, ensuring it's clamped
     @turbo for i in eachindex(du)
         du[i] = clamp(-u[i] + Ib + Bu[i] + conv_result[i], -1e6, 1e6)
     # end of the function
     end
+    GC.gc()
 end
 
 function ode_result_process(z, n, m)
@@ -84,7 +86,7 @@ function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matr
     SocketLogger.write_log_to_socket(socket_conn, "Before Bu init")
     WebSockets.write(wsocket, "First convolution started")
 
-    Bu = fftconvolve2d(image_normalized, tempB)
+    Bu = parallel_fftconvolve2d(image_normalized, tempB)
     SocketLogger.write_log_to_socket(socket_conn, "After Bu init")
     WebSockets.write(wsocket, "First convolution ended")
     params = (Ib, Bu, tempA, n, m, wsocket)
@@ -96,20 +98,6 @@ function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matr
     sol = solve(prob, CVODE_BDF(linear_solver=:GMRES), reltol=1e-5, abstol=1e-8, maxiters=1000000)
     SocketLogger.write_log_to_socket(socket_conn, "After ODE problem")
     WebSockets.write(wsocket, "ODE solved")
-    # open("solution_output.txt", "w") do file
-    #     for j in 1:length(sol)
-    #         # Print the timestep header
-    #         println(file, "Solution at timestep $j:")
-            
-    #         # Get the processed result
-    #         processed_result = ode_result_process(sol[j], n, m)
-            
-    #         # Print the solution for the current timestep
-    #         for row in eachrow(processed_result)
-    #             println(file, join(row, ", "))  # Join elements of the row with a comma
-    #         end
-    #     end
-    # end
 
     # Process results
     z = sol[end]

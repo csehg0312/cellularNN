@@ -235,9 +235,6 @@ class AsyncServer:
             if data is None:
                 raise ValueError("Request body is null or empty")
 
-            # if data.get('available_port') is None:
-            #     raise ValueError("available_port is null or empty")
-
             task_id = str(uuid.uuid4())
 
             # Create an instance of ClientHandler to handle the request

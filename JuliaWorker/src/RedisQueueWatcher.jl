@@ -3,6 +3,7 @@ module RedisQueueWatcher
 using ..JuliaWorker
 using ..LinearConvolution
 using ..ODESolver
+using Distributed
 
 using Redis, JSON, WebSockets
 include("SocketLogger.jl")
@@ -66,6 +67,23 @@ function cleanup(redis_client, socket_conn)
     end
 end
 
+function manage_workers(queue_name, socket_conn)
+    while true
+        num_tasks = Redis.llen(queue_name)
+        SocketLogger.write_log_to_socket(socket_conn, "Number of tasks in queue: $num_tasks\n")
+        if num_tasks > 10 && nworkers() < 10
+            addprocs(2)
+            SocketLogger.write_log_to_socket(socket_conn, "Added 2 workers\n")
+        elseif num_tasks < 5 && nworkers() > 1
+            rmprocs(workers()[2:end])
+            SocketLogger.write_log_to_socket(socket_conn, "Removed 2 workers\n")
+        end
+        sleep(5)
+    end
+end
+    
+        
+
 function watch_redis_queue(redis_client, queue_name, socket_conn)
     SocketLogger.write_log_to_socket(socket_conn, "Started Redis Queue Watcher!\n")
     
@@ -78,6 +96,8 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
         end
     end
     
+    @async manage_workers(queue_name, socket_conn)
+
     try
         while !JuliaWorker.global_interrupt_flag[]
             try
@@ -137,8 +157,8 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
                                         # Log processed task
                                         processed = JSON.json(ode_result)
                                         try
-                                            # WebSockets.write(ws, processed)
-                                            SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
+                                            WebSockets.write(ws, processed)
+                                            # SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
                                         catch e
                                             SocketLogger.write_log_to_socket(socket_conn, "Error sending processed task to client: $e\n")
                                         end

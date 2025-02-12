@@ -43,7 +43,7 @@ class ClientHandler:
                             image_data = image_data[1:-1] 
 
                         header, encoded = image_data.split(',', 1)
-                        # print(header)
+                        print(header)
                         # print(encoded)
                     except:
                         header, encoded = None, None
@@ -56,6 +56,7 @@ class ClientHandler:
                                     "type": "image",
                                     "data": image_data
                                 }))
+                                self.server.connected_websockets.remove(self.websocket)
                     else:
                         # Send non-image messages as JSON
                         for ws in self.server.connected_websockets:
@@ -149,6 +150,10 @@ class ClientHandler:
             'task_id': task_id,
             'websocket_url': websocket_url  # Send back the WebSocket URL
         })
+    
+    async def handle_realtime():
+
+        return "Hello World"
 
     async def send(self, message):
         """Send a message to the client via WebSocket."""

@@ -17,7 +17,7 @@ function PhotoCNN() {
   const [image, setImage] = createSignal(null);
   const [outputImage, setOutputImage] = createSignal(null);
   const [loading, setLoading] = createSignal(false);
-  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/tasks' : '/tasks');
+  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/tasks' : '192.168.0.102:8082/tasks');
   const [selectedMode, setSelectedMode] = createSignal('edge_detect_'); 
 
   // New state to handle notification
@@ -144,6 +144,7 @@ function PhotoCNN() {
   const uploadImage = async () => {
     if (!image()) return;
     console.log('Starting upload');
+    setLogMessages([]);
     setLoading(true);
 
     // Create a JSON object to send

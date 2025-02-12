@@ -151,8 +151,8 @@ laplacian_edge_B = np.array([[0.0,1.0,0.0],
                         [1.0,-4.0,1.0],
                         [0.0,1.0,0.0]])
 laplacian_edge_t = np.arange(1.0,5.0+0.01,0.01)
-laplacian_Ib = 0.0
-laplacian_init = 0.0
+laplacian_edge_Ib = 0.0
+laplacian_edge_init = 0.0
 
 #Diffusion
 diffusion_A = np.array([[0.0, 0.0, 0.0],
@@ -282,7 +282,20 @@ settings = {
     'saved_B': saved_B,
     'saved_t': saved_t,
     'saved_Ib': saved_Ib,
-    'saved_init': saved_init
+    'saved_init': saved_init,
+
+    'diffusion_A': diffusion_A,
+    'diffusion_B': diffusion_B,
+    'diffusion_t': diffusion_t,
+    'diffusion_Ib': diffusion_Ib,
+    'diffusion_init': diffusion_init,
+
+    'laplacian_edge_A': laplacian_edge_A,
+    'laplacian_edge_B': laplacian_edge_B,
+    'laplacian_edge_t': laplacian_edge_t,
+    'laplacian_edge_Ib': laplacian_edge_Ib,
+    'laplacian_edge_init': laplacian_edge_init
+
 }
 
 # Save the data to a file using pickle

@@ -30,7 +30,6 @@ function f!(du, u, p, t)
         du[i] = clamp(-u[i] + Ib + Bu[i] + conv_result[i], -1e6, 1e6)
     # end of the function
     end
-    GC.gc()
 end
 
 function ode_result_process(z, n, m)
@@ -53,42 +52,71 @@ function ode_result_process(z, n, m)
     return out_l
 end
 
-# function Normalization(input)
-#     output = @. (input / 127.5) -1
-#     return output
-# end
+function cleanup_memory!(vars...)
+    for var in vars
+        try
+            if var isa Array || var isa IOBuffer
+                Base.finalize(var)
+            end
+        catch e
+            @warn "Cleanup error: $e"
+        end
+        var = nothing
+    end
+    GC.gc(true)
+end
 
-# function normalize_image!(input, output)
-#     @avx for i in eachindex(input)
-#         output[i] = (input[i] / 127.5) - 1
-#     end
-# end
+function process_and_generate_image(z, n, m, wsocket)
+    out_l = reshape(z, n, m)
 
-# function Denormalization(input)
-#     output = @. (input * 127.5) +1
-#     return output
-# end
+    # Simplified conversion and thresholding
+    @turbo for i in eachindex(out_l)
+        val = Activation.safe_activation(out_l[i])
+        out_l[i] = val > 0 ? 255.0 : 0.0
+    end
+    try
+        # Create and encode image
+        binary_image = Gray.(out_l ./ 255)
+        io = IOBuffer()
+        FileIO.save(Stream(format"PNG", io), binary_image)
+        binary_data = take!(io)
+        img_base64 = base64encode(binary_data)
+        image_packet = "data:image/png;base64,$img_base64"
+
+        # Immediate cleanup of temporary buffers
+        WebSockets.write(wsocket, image_packet)
+        cleanup_memory!(binary_image, binary_data, img_base64, image_packet, io)
+
+    catch e
+        WebSockets.write(wsocket, "Image processing error: $e")
+        cleanup_memory!(z, out_l)
+    end
+end
 
 function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64, wsocket)
     SocketLogger.write_log_to_socket(socket_conn, "Starting ODE solver...\n")
     WebSockets.write(wsocket, "Started ODE solver...")
-    n, m = size(image)
-    # Prepare initial conditions
-    image_normalized = similar(image)
-    @turbo for i in eachindex(image)
-        image_normalized[i] = (image[i] / 127.5) - 1
+    # Kezdeti allapotok elokeszitese
+    n, m = size(image) 
+    image_normalized = similar(image) 
+    @turbo for i in eachindex(image) 
+        image_normalized[i] = (image[i] / 127.5) - 1 
     end
-    z0 = similar(image_normalized)
-    @turbo for i in eachindex(image_normalized)
-        z0[i] = initial_condition * image_normalized[i]
-    end
-    # z0 = fill(initial_condition, n * m)
+    # z0 = similar(image_normalized)
     SocketLogger.write_log_to_socket(socket_conn, "Before Bu init")
     WebSockets.write(wsocket, "First convolution started")
-
-    Bu = parallel_fftconvolve2d(image_normalized, tempB)
-    SocketLogger.write_log_to_socket(socket_conn, "After Bu init")
+    Bu = LinearConvolution.parallel_fftconvolve2d(image_normalized, tempB)
     WebSockets.write(wsocket, "First convolution ended")
+    SocketLogger.write_log_to_socket(socket_conn, "After Bu init")
+    # @turbo for i in eachindex(image_normalized)
+    #     z0[i] = initial_condition * image_normalized[i]
+    # end
+    @turbo for i in eachindex(image_normalized) 
+        image_normalized[i] *= initial_condition 
+    end 
+    z0 = image_normalized # Now image_normalized is z0
+    # z0 = fill(initial_condition, n * m)
+    
     params = (Ib, Bu, tempA, n, m, wsocket)
 
     # Set up and solve ODE problem
@@ -100,34 +128,11 @@ function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matr
     WebSockets.write(wsocket, "ODE solved")
 
     # Process results
-    z = sol[end]
-    @turbo for i in eachindex(z)
-        z[i] = Activation.safe_activation(z[i])
-    end
-    out_l = reshape(z, n, m)
+    process_and_generate_image(sol[end], n, m, wsocket)
 
-    SocketLogger.write_log_to_socket(socket_conn, "Normalizing data\n")
-    WebSockets.write(wsocket, "Data being normalized")
-    # Normalize to [0, 255] range
-    # Normalize and threshold to binary (0 or 255)
-    threshold = 0.5  # Define threshold for binarization
-    @turbo for i in eachindex(out_l)
-        out_l[i] = (out_l[i] * 127.5) + 1
-        out_l[i] = (out_l[i] > threshold * 255) ? 255 : 0  # Ensure values are exactly 0 or 255
-    end
-    
-     # Convert to binary image format
-     binary_image = Gray.(out_l ./ 255)  # Normalize to 0 or 1
-    
-     # Encode the binary image as PNG into an IOBuffer
-     io = IOBuffer()
-     FileIO.save(Stream(format"PNG", io), binary_image)
-     binary_data = take!(io)
-     
-     img_base64 = base64encode(binary_data)
-     image_packet = "data:image/png;base64,$img_base64"
-
-    return image_packet
+    # Cleanup memory
+    cleanup_memory!(prob, sol, Bu, z0, image_normalized, params)
+    # return image_packet
 end
 
 end

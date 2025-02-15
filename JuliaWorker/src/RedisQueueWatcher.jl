@@ -3,7 +3,10 @@ module RedisQueueWatcher
 using ..JuliaWorker
 using ..LinearConvolution
 using ..ODESolver
+# using ..SAODESolver
 using Distributed
+
+# SAODESolver.init_workers()
 
 using Redis, JSON, WebSockets
 include("SocketLogger.jl")
@@ -152,16 +155,16 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
 
                                     try
                                         SocketLogger.write_log_to_socket(socket_conn, "Processing task...\n")
-                                        ode_result = ODESolver.solve_ode(socket_conn, image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition, ws)
+                                        ODESolver.solve_ode(socket_conn, image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition, ws)
 
                                         # Log processed task
-                                        processed = JSON.json(ode_result)
-                                        try
-                                            WebSockets.write(ws, processed)
-                                            # SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
-                                        catch e
-                                            SocketLogger.write_log_to_socket(socket_conn, "Error sending processed task to client: $e\n")
-                                        end
+                                        # processed = JSON.json(ode_result)
+                                        # try
+                                        #     WebSockets.write(ws, processed)
+                                        #     # SocketLogger.write_log_to_socket(socket_conn, "Processed task: $processed\n")
+                                        # catch e
+                                        #     SocketLogger.write_log_to_socket(socket_conn, "Error sending processed task to client: $e\n")
+                                        # end
                                     catch e
                                         SocketLogger.write_log_to_socket(socket_conn, "Error processing task: $e\n")
                                     end

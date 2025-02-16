@@ -12,7 +12,7 @@ using Redis, JSON, WebSockets
 include("SocketLogger.jl")
 export watch_redis_queue
 
-function create_redis_connection(conn,host="localhost", port=6379, retiries=5, delay=1)
+function create_redis_connection(conn,host="0.0.0.0", port=6379, retiries=5, delay=1)
     for attempt in 1:retiries
         try
             answer = Redis.ping(Redis.RedisConnection(host=host, port=port))
@@ -93,7 +93,7 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
     # Ensure redis_client is valid or create a new connection
     if redis_client === nothing || !is_redis_connected(redis_client)
         SocketLogger.write_log_to_socket(socket_conn, "Creating new Redis connection...\n")
-        redis_client = create_redis_connection(socket_conn)
+        redis_client = create_redis_connection(ENV["REDIS_HOST"], parse(Int,["REDIS_PORT"]),socket_conn)
         if redis_client !== nothing
             SocketLogger.write_log_to_socket(socket_conn, "Watching queue: $queue_name\n")
         end

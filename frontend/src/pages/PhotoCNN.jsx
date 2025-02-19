@@ -4,7 +4,7 @@ import UploadButton from '../components/UploadButton';
 import './PhotoCNN.module.css'; // Ensure you use this file if needed for additional styles
 
 function isLocalhost() {
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return window.location.hostname === '0.0.0.0' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 }
 
 function PhotoCNN() {
@@ -17,7 +17,7 @@ function PhotoCNN() {
   const [image, setImage] = createSignal(null);
   const [outputImage, setOutputImage] = createSignal(null);
   const [loading, setLoading] = createSignal(false);
-  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/tasks' : '192.168.0.102:8082/tasks');
+  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? 'http://localhost:9000/tasks' : '192.168.0.102:9000/tasks');
   const [selectedMode, setSelectedMode] = createSignal('edge_detect_'); 
 
   // New state to handle notification

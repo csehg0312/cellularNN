@@ -6,7 +6,7 @@ import sys
 def run_worker():
     # Path to the Julia executable
     julia_executable = "julia"
-    julia_env_path = os.path.expanduser("~/app/JuliaWorker") # Use expanduser to handle "~"
+    julia_env_path = os.path.expanduser("/app/JuliaWorker") # Use expanduser to handle "~"
 
     # Julia script to run your function
     julia_script = f"""

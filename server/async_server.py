@@ -1,6 +1,8 @@
 import asyncio
 import aiohttp
 from aiohttp import web
+# from aiohttp.web import middleware
+# from aiohttp import 
 import redis.asyncio as redis
 from aiolimiter import AsyncLimiter
 import uuid
@@ -15,6 +17,32 @@ import numpy as np
 from config.config import get_available_port
 from config.config import load_clients_config
 dist_path = Path(__file__).parent.parent / "dist"
+
+#@middleware
+#async def cors_middleware(request, handler):
+#    """Middleware to handle CORS with specific headers"""
+#    if request.method == 'OPTIONS':
+#        # Handle preflight requests
+#        response = web.Response(status=204)
+#        response.headers.update({
+#            'Access-Control-Allow-Origin': '*',
+#            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+#            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+#            'Access-Control-Max-Age': '3600',
+#            'Content-Type': 'text/plain charset=UTF-8',
+#            'Content-Length': '0',
+#        })
+#        return response
+    
+    # Handle actual request
+#    response = await handler(request)
+#    response.headers.update({
+#        'Access-Control-Allow-Origin': '*',
+#        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+#        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+#        'Access-Control-Max-Age': '3600',
+#    })
+#    return response
 
 class AsyncServer:
     def __init__(self, host, port, julia_port, redis_host, redis_port):
@@ -225,22 +253,38 @@ class AsyncServer:
 
 
     async def handle_request(self, request):
+        """Handle POST requests with proper error handling"""
         await self.rate_limiter.acquire()
 
         if request.method == 'POST':
-            if request.content_type != 'application/json':
-                raise ValueError("Invalid content type")
+            try:
+                if request.content_type != 'application/json':
+                    return web.Response(
+                        status=415,
+                        text='Invalid content type',
+#                        headers={'Access-Control-Allow-Origin': '*'}
+                    )
 
-            data = await request.json()
-            if data is None:
-                raise ValueError("Request body is null or empty")
+                data = await request.json()
+                if data is None:
+                    raise ValueError("Request body is null or empty")
 
-            task_id = str(uuid.uuid4())
+                task_id = str(uuid.uuid4())
+                client_handler = ClientHandler(self, request, task_id)
+                return await client_handler.handle_request(data)
 
-            # Create an instance of ClientHandler to handle the request
-            client_handler = ClientHandler(self, request, task_id)
-            response = await client_handler.handle_request(data)
-            return response
+            except json.JSONDecodeError:
+                return web.Response(
+                    status=400,
+                    text='Invalid JSON format',
+#                    headers={'Access-Control-Allow-Origin': '*'}
+                )
+            except Exception as e:
+                return web.Response(
+                    status=500,
+                    text=f'Server error: {str(e)}',
+ #                   headers={'Access-Control-Allow-Origin': '*'}
+                )
 
     async def handle_tasks(self):
         while self.running:

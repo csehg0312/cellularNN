@@ -134,9 +134,11 @@ class ClientHandler:
             # del data, image_data, keep_original_size, selected_size, invert_size
 
 
-        protocol = "wss" if self.request.scheme == "https" else "ws"
+        #protocol = "wss" if self.request.scheme == "https" else "ws"
+        protocol = "ws"
         # Generate a WebSocket URL for the client to connect to later
-        websocket_url = f"{protocol}://{self.request.host}/ws/{task_id}"
+        websocket_url = f"{protocol}://0.0.0.0:8082/ws/{task_id}"
+        websocket_url_client = f"{protocol}://{self.request.host}/ws/{task_id}".replace(":8082", ":9000")
         data['websocket'] = websocket_url
         # # Store the incoming JSON to Redis database as the key
         await self.server.redis_client.set(f'task:data:{self.task_id}', json.dumps(data))
@@ -148,7 +150,7 @@ class ClientHandler:
             'server_response': "All data received successfully!",
             'response_status': 200,
             'task_id': task_id,
-            'websocket_url': websocket_url  # Send back the WebSocket URL
+            'websocket_url': websocket_url_client  # Send back the WebSocket URL
         })
     
     async def handle_realtime():

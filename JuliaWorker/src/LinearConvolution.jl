@@ -4,6 +4,7 @@ using ..JuliaWorker
 using FFTW
 using Distributed
 using SharedArrays
+using CUDA
 
 export fftconvolve2d, parallel_fftconvolve2d, sa_parallel_fftconvolve2d
 
@@ -106,7 +107,7 @@ function parallel_fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10)
 
     return output
 end
-
+# Shared Array method
 function sa_parallel_fftconvolve2d(in1::Union{Matrix{T}, SharedArray{T}}, in2::Matrix{T}; threshold=1e-10) where T<:Number
     s1 = size(in1)
     s2 = size(in2)
@@ -162,6 +163,39 @@ function sa_parallel_fftconvolve2d(in1::Union{Matrix{T}, SharedArray{T}}, in2::M
     end
 
     return output
+end
+
+# GPU-compatible versions
+function cu_fftconvolve2d(in1::CuArray{T,2}, in2::CuArray{T,2}; threshold=1e-10) where T<:Number
+    s1 = size(in1)
+    s2 = size(in2)
+
+    padded_size = (s1[1] + s2[1] - 1, s1[2] + s2[2] - 1)
+    next_power_of_2 = (2^ceil(Int, log2(padded_size[1])), 2^ceil(Int, log2(padded_size[2])))
+
+    padded_in1 = CUDA.zeros(ComplexF64, next_power_of_2...)
+    padded_in2 = CUDA.zeros(ComplexF64, next_power_of_2...)
+
+    padded_in1[1:s1[1], 1:s1[2]] .= in1
+    padded_in2[1:s2[1], 1:s2[2]] .= in2
+
+    fft_in1 = CUDA.CUFFT.fft(padded_in1)
+    fft_in2 = CUDA.CUFFT.fft(padded_in2)
+
+    fft_result = fft_in1 .* fft_in2
+
+    result = real(CUDA.CUFFT.ifft(fft_result))
+    result .= (abs.(result) .>= threshold) .* result  # Avoid scalar indexing
+
+    start_row = div(s2[1] - 1, 2)
+    start_col = div(s2[2] - 1, 2)
+    return result[start_row+1:start_row+s1[1], start_col+1:start_col+s1[2]]
+end
+
+function cu_parallel_fftconvolve2d(in1::CuArray{T,2}, in2::CuArray{T,2}; threshold=1e-10) where T<:Number
+    s2 = size(in2)
+    @assert s2 == (3,3) "Template size must be 3x3"
+    fftconvolve2d(in1, in2; threshold=threshold)
 end
 
 end

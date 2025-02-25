@@ -1,4 +1,4 @@
-module LinearConvolution
+module CuLinearConvolution
 
 using ..JuliaWorker
 using FFTW
@@ -33,7 +33,9 @@ function fftconvolve2d(in1::CuArray{T,2}, in2::CuArray{T,2}; threshold=1e-10) wh
 
     # Perform inverse FFT and apply thresholding
     result = real(CUDA.CUFFT.ifft(fft_result))
-    CUDA.@allowscalar result[abs.(result) .< threshold] .= 0  # Use allowscalar for indexing
+    # Apply thresholding using broadcasting
+    # CUDA.@allowscalar result[abs.(result) .< threshold] .= 0  # Use allowscalar for indexing if it is accessible
+    result .= (abs.(result) .>= threshold) .* result 
 
     # Extract the valid part of the result with same dimensions as input
     start_row = div(s2[1] - 1, 2)

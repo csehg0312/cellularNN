@@ -27,7 +27,7 @@ function f!(du, u, p, t)
     x_mat .= Activation.safe_activation.(x_mat)
     
     # GPU-compatible convolution
-    conv_result = LinearConvolution.parallel_fftconvolve2d(x_mat, tempA)
+    conv_result = LinearConvolution.cu_parallel_fftconvolve2d(x_mat, tempA)
     
     # Compute derivative with GPU-accelerated operations
     @. du = clamp(-u + Ib + Bu + conv_result, -1e6, 1e6)
@@ -58,6 +58,20 @@ function process_and_generate_image(z, n, m, wsocket)
     catch e
         WebSockets.write(wsocket, "Image processing error: $e")
     end
+end
+
+function cleanup_memory!(vars...)
+    for var in vars
+        try
+            if var isa Array || var isa IOBuffer
+                Base.finalize(var)
+            end
+        catch e
+            @warn "Cleanup error: $e"
+        end
+        var = nothing
+    end
+    GC.gc(true)
 end
 
 function solve_ode(socket_conn, image::Matrix{Float64}, Ib::Float64, tempA::Matrix{Float64}, tempB::Matrix{Float64}, t_span::Vector{Float64}, initial_condition::Float64, wsocket)

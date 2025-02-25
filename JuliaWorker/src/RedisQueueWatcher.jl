@@ -3,12 +3,13 @@ module RedisQueueWatcher
 using ..JuliaWorker
 using ..LinearConvolution
 using ..ODESolver
+using ..CuODESolver
 # using ..SAODESolver
 using Distributed
 
 # SAODESolver.init_workers()
 
-using Redis, JSON, WebSockets
+using Redis, JSON, WebSockets, CUDA
 include("SocketLogger.jl")
 export watch_redis_queue
 
@@ -155,7 +156,20 @@ function watch_redis_queue(redis_client, queue_name, socket_conn)
 
                                     try
                                         SocketLogger.write_log_to_socket(socket_conn, "Processing task...\n")
-                                        ODESolver.solve_ode(socket_conn, image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition, ws)
+                                        if CUDA.functional() && CUDA.has_cuda_gpu()
+                                            SocketLogger.write_log_to_socket(socket_conn, "CUDA is functional AND has gpu connected! \n")
+                                            # num_gpus = CUDA.devices()
+                                            CuODESolver.solve_ode(socket_conn,image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition, ws)
+                                            
+                                        else
+                                            if !CUDA.functional()    
+                                                SocketLogger.write_log_to_socket(socket_conn, "CUDA is NOT functional! \n")
+                                            end
+                                            if !CUDA.has_cuda_gpu()
+                                                SocketLogger.write_log_to_socket(socket_conn, "There is no CUDA-capable GPU available! \n")
+                                            end
+                                            ODESolver.solve_ode(socket_conn, image_matrix, Ib, feedbackA_matrix, controlB_matrix, t_span, initialCondition, ws)
+                                        end
 
                                         # Log processed task
                                         # processed = JSON.json(ode_result)

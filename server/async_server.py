@@ -108,7 +108,7 @@ class AsyncServer:
             await self.log_to_file(f"Failed to connect to Redis at {self.redis_host}:{self.redis_port}. Using in-memory queue.")
             self.redis_client = None
 
-        app = web.Application(client_max_size=8 * 1024 * 1024)
+        app = web.Application(client_max_size=10 * 1024 * 1024)
         app.router.add_static('/assets', path=dist_path / 'assets', name='assets')
         app.add_routes([
             web.post('/tasks', self.handle_request),

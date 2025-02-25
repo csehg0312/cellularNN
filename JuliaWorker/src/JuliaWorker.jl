@@ -3,7 +3,7 @@ module JuliaWorker
 using Sundials, FFTW, LoopVectorization, Sockets, Redis, DotEnv
 
 # Include dependencies
-for file in ["Activation.jl", "LinearConvolution.jl", "ODESolver.jl", 
+for file in ["Activation.jl", "LinearConvolution.jl", "ODESolver.jl", "CuODESolver.jl",
             "RedisQueueWatcher.jl", "SocketLogger.jl"]
     include(file)
 end

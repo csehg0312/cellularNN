@@ -166,7 +166,7 @@ function PhotoCNN() {
         console.log('Ready to receive');
 
         const jsonResponse = await response.json();
-        console.log(jsonResponse);
+        setResponseStatus(jsonResponse.response_status);
         const wsUrl = jsonResponse.websocket_url;
 
         const socket = new WebSocket(wsUrl);

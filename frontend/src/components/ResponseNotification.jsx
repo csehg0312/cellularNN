@@ -1,7 +1,12 @@
 function ResponseNotification({ message, status, onClose }) {
     const getStatusColor = () => {
-      if (status === 200) return 'bg-green-500';
-      if (status >= 400 && status < 500) return 'bg-yellow-500';
+      if (status >= 200 && status <= 299) {
+        return 'bg-green-500';
+      }
+        
+      if (status >= 400 && status < 500) {
+        return 'bg-yellow-500';
+      }
       return 'bg-red-500';
     };
   
@@ -18,5 +23,3 @@ function ResponseNotification({ message, status, onClose }) {
 }
   
   export default ResponseNotification;
-  
-            

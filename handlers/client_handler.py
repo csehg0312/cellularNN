@@ -138,7 +138,7 @@ class ClientHandler:
         protocol = "ws"
         # Generate a WebSocket URL for the client to connect to later
         websocket_url = f"{protocol}://0.0.0.0:8082/ws/{task_id}"
-        websocket_url_client = f"{protocol}://{self.request.host}/ws/{task_id}".replace(":8082", ":9000")
+        websocket_url_client = f"{protocol}://{self.request.host}:9000/ws/{task_id}".replace(":8082", ":9000")
         data['websocket'] = websocket_url
         # # Store the incoming JSON to Redis database as the key
         await self.server.redis_client.set(f'task:data:{self.task_id}', json.dumps(data))

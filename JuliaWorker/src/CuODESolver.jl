@@ -12,7 +12,7 @@ using Images
 using FileIO
 using Base64
 using WebSockets
-using OrdinaryDiffEq  # Switch to DifferentialEquations.jl's ODE solvers
+#using OrdinaryDiffEq  # Switch to DifferentialEquations.jl's ODE solvers
 
 export solve_ode
 

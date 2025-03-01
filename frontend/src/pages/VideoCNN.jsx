@@ -12,7 +12,7 @@ function VideoCNN() {
   const [videoStream, setVideoStream] = createSignal(null);
   const [outputImage, setOutputImage] = createSignal(null);
   const [loading, setLoading] = createSignal(false);
-  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/offer' : '/offer');
+  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? 'http://localhost:9000/offer' : 'http://localhost:9000/offer');
   const [selectedMode, setSelectedMode] = createSignal('edge_detect_');
   
   // Video devices state

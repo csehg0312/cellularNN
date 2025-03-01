@@ -54,6 +54,7 @@ class AsyncServer:
         app = web.Application(client_max_size=10 * 1024 * 1024)
         app.router.add_static('/assets', path=dist_path / 'assets', name='assets')
         app.add_routes([
+            web.post('/offer', self.handle_offer),
             web.post('/tasks', self.handle_request),
             web.get('/ws/{task_id}', self.websocket_handler),  
             web.get('/', self.handle_index)          
@@ -78,6 +79,11 @@ class AsyncServer:
         task_id = request.match_info['task_id']
         handler = ClientHandler(self, request, task_id)
         return await handler.handle_websocket()
+
+    async def handle_offer(self, request):
+        data = await request.json()
+        handler = ClientHandler(self, request, None)
+        return await handler.handle_offer_http(data)
 
     async def notify_websockets(self, message):
         for ws in self.connected_websockets:

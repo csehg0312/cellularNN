@@ -1,241 +1,277 @@
-import { createSignal, createEffect, onCleanup, onMount, For } from 'solid-js';
+import { createSignal, createEffect, onCleanup, onMount } from 'solid-js';
+import ResponseNotification from '../components/ResponseNotification';
+// import UploadButton from '../components/UploadButton';
+import './VideoCNN.module.css';
 
-const VideoCNN = () => {
-  const [dataChannelLog, setDataChannelLog] = createSignal('');
-  const [iceConnectionLog, setIceConnectionLog] = createSignal('');
-  const [iceGatheringLog, setIceGatheringLog] = createSignal('');
-  const [signalingLog, setSignalingLog] = createSignal('');
-  const [offerSdp, setOfferSdp] = createSignal('');
-  const [answerSdp, setAnswerSdp] = createSignal('');
-  const [error, setError] = createSignal(null);
-  const [showStart, setShowStart] = createSignal(true);
-  const [showStop, setShowStop] = createSignal(false);
-  const [showMedia, setShowMedia] = createSignal(false);
+function isLocalhost() {
+  return window.location.hostname === '0.0.0.0' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
+
+function VideoCNN() {
+  // Setting parameters for video processing
+  const [videoStream, setVideoStream] = createSignal(null);
+  const [outputImage, setOutputImage] = createSignal(null);
+  const [loading, setLoading] = createSignal(false);
+  const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? '/offer' : '/offer');
+  const [selectedMode, setSelectedMode] = createSignal('edge_detect_');
   
-  // State variables for video devices
+  // Video devices state
   const [videoInputs, setVideoInputs] = createSignal([]);
   const [selectedVideoInput, setSelectedVideoInput] = createSignal('');
+  
+  // State for notification and logging
+  const [responseMessage, setResponseMessage] = createSignal(null);
+  const [responseStatus, setResponseStatus] = createSignal(null);
+  const [logMessages, setLogMessages] = createSignal([]);
+  const [elapsedTime, setElapsedTime] = createSignal(null);
+  const [startTime, setStartTime] = createSignal(null);
+  
+  // Streaming state
+  const [isStreaming, setIsStreaming] = createSignal(false);
+  
+  // References for video and canvas elements
+  let videoRef;
+  let canvasRef;
+  let websocket = null;
+  let animationFrameId = null;
 
-  //Close variables
-  const [isOpen, setIsOpen] = createSignal(true);
-
-  //Peerconnection, datachannel and interval variable
-  let pc = null;
-  let dc = null;
-  let dcInterval = null;
-
-  const createPeerConnection = () => {
-    const config = {
-      sdpSemantics: 'unified-plan',
-      iceServers: document.getElementById('use-stun').checked
-        ? [{ urls: ['stun:stun.l.google.com:19302'] }]
-        : [],
-    };
-
-    pc = new RTCPeerConnection(config);
-
-    pc.addEventListener('icegatheringstatechange', () => {
-      setIceGatheringLog(prev => prev + ' -> ' + pc.iceGatheringState);
-    });
-
-    pc.addEventListener('iceconnectionstatechange', () => {
-      setIceConnectionLog(prev => prev + ' -> ' + pc.iceConnectionState);
-    });
-
-    pc.addEventListener('signalingstatechange', () => {
-      setSignalingLog(prev => prev + ' -> ' + pc.signalingState);
-    });
-
-    pc.addEventListener('track', (evt) => {
-      if (evt.track.kind === 'video') {
-        document.getElementById('video').srcObject = evt.streams[0];
-      }
-    });
-
-    return pc;
+  const handleModeChange = (e) => {
+    setSelectedMode(e.target.value);
   };
 
   const enumerateVideoDevices = async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoInputDevices = devices.filter(device => device.kind === 'videoinput');
-
+      
       setVideoInputs(videoInputDevices);
-
+      
       if (videoInputDevices.length > 0) {
         setSelectedVideoInput(videoInputDevices[0].deviceId);
       }
     } catch (err) {
-      setError('Failed to get video devices: ' + err.message);
+      setLogMessages(prev => [...prev, `Error getting video devices: ${err.message}`]);
     }
   };
 
-  const negotiate = async () => {
+  const handleWebSocketMessage = async (event) => {
     try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      await new Promise((resolve) => {
-        if (pc.iceGatheringState === 'complete') {
-          resolve();
-        } else {
-          const checkState = () => {
-            if (pc.iceGatheringState === 'complete') {
-              pc.removeEventListener('icegatheringstatechange', checkState);
-              resolve();
-            }
-          };
-          pc.addEventListener('icegatheringstatechange', checkState);
-        }
-      });
-
-      const localDesc = pc.localDescription;
-      let sdp = localDesc.sdp;
-
-      // const videoCodec = document.getElementById('video-codec').value;
-      // if (videoCodec !== 'default') {
-      //   sdp = sdpFilterCodec('video', videoCodec, sdp);
-      // }
-
-      setOfferSdp(sdp);
-
-      const response = await fetch('/offer', {
-        body: JSON.stringify({
-          sdp: sdp,
-          type: localDesc.type,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-      });
-
-      const answer = await response.json();
-      setAnswerSdp(answer.sdp);
-      await pc.setRemoteDescription(answer);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const start = async () => {
-    setShowStart(false);
-    pc = createPeerConnection();
-
-    let timeStart = null;
-
-    const currentStamp = () => {
-      if (timeStart === null) {
-        timeStart = new Date().getTime();
-        return 0;
-      } else {
-        return new Date().getTime() - timeStart;
+      console.log('Raw WebSocket message:', event.data);
+  
+      let message = event.data;
+  
+      // Check if the message is a string starting with "WebSocket"
+      if (typeof message === 'string' && message.startsWith('WebSocket')) {
+        setLogMessages(prev => [...prev, `Info message: ${message}`]);
+        return;
       }
-    };
-
-    if (document.getElementById('use-datachannel').checked) {
-      const parameters = JSON.parse(document.getElementById('datachannel-parameters').value);
-      dc = pc.createDataChannel('chat', parameters);
-
-      dc.addEventListener('close', () => {
-        clearInterval(dcInterval);
-        setDataChannelLog(prev => prev + '- close\n');
-      });
-
-      dc.addEventListener('open', () => {
-        setDataChannelLog(prev => prev + '- open\n');
-        dcInterval = setInterval(() => {
-          const message = `ping ${currentStamp()}`;
-          setDataChannelLog(prev => prev + `> ${message}\n`);
-          dc.send(message);
-        }, 1000);
-      });
-
-      dc.addEventListener('message', (evt) => {
-        setDataChannelLog(prev => prev + `< ${evt.data}\n`);
-        if (evt.data.substring(0, 4) === 'pong') {
-          const elapsedMs = currentStamp() - parseInt(evt.data.substring(5), 10);
-          setDataChannelLog(prev => prev + ` RTT ${elapsedMs} ms\n`);
-        }
-      });
+  
+      // Try to parse as JSON for other messages
+      let data;
+      try {
+        data = JSON.parse(message);
+      } catch (parseError) {
+        // If it's not JSON and not a WebSocket info message, log as plain text
+        setLogMessages(prev => [...prev, `Plain text message: ${message}`]);
+        return;
+      }
+  
+      // Handle JSON messages
+      const { type, message: msg, data: payload } = data;
+      setLogMessages(prev => [...prev, `Parsed message type: ${type}`]);
+  
+      switch (type) {
+        case 'image':
+          if (typeof payload === 'string' && payload.startsWith('data:image/')) {
+            const endTime = Date.now(); // Capture end time
+            setElapsedTime((endTime - startTime()) / 60000); // Convert milliseconds to minutes
+            setLogMessages(prev => [...prev, 'Valid image data format detected']);
+  
+            try {
+              const mimeType = payload.split(';')[0].split(':')[1];
+              setLogMessages(prev => [...prev, `MIME type: ${mimeType}`]);
+  
+              const base64Data = payload.split(',')[1];
+              const byteCharacters = atob(base64Data);
+              const byteArray = new Uint8Array(byteCharacters.length);
+  
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteArray[i] = byteCharacters.charCodeAt(i);
+              }
+  
+              const blob = new Blob([byteArray], { type: mimeType });
+              const url = URL.createObjectURL(blob);
+  
+              setOutputImage(url);
+              setLogMessages(prev => [...prev, 'Successfully created and set image URL']);
+            } catch (blobError) {
+              setLogMessages(prev => [...prev, `Error creating blob: ${blobError.message}`]);
+            }
+          } else {
+            setLogMessages(prev => [...prev, 'Invalid image data format - missing data:image/ prefix']);
+          }
+          break;
+  
+        case 'progress':
+        case 'error':
+        case 'status':
+          setLogMessages(prev => [...prev, `${type}: ${msg || payload}`]);
+          break;
+  
+        default:
+          setLogMessages(prev => [...prev, `Other message: ${JSON.stringify(data)}`]);
+          break;
+      }
+    } catch (error) {
+      setLogMessages(prev => [...prev, `General error handling message: ${error.message}`]);
     }
+  };
 
-    const constraints = {
-      video: { deviceId: { exact: selectedVideoInput() } }
-    };
+  const closeNotification = () => {
+    setResponseMessage(null);
+    setResponseStatus(null);
+  };
 
-    // const resolution = document.getElementById('video-resolution').value;
-    // if (resolution) {
-    //   const [width, height] = resolution.split('x').map(Number);
-    //   constraints.video = { ...constraints.video, width, height };
-    // }
-
+  const startVideoStream = async () => {
     try {
+      if (isStreaming()) {
+        stopVideoStream();
+        return;
+      }
+
+      setLogMessages([]);
+      setLoading(true);
+
+      const constraints = {
+        video: { deviceId: selectedVideoInput() ? { exact: selectedVideoInput() } : undefined }
+      };
+
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream);
-      });
-      setShowMedia(true);
-      await negotiate();
-    } catch (err) {
-      console.error('Could not acquire media:', err);
-    }
+      setVideoStream(stream);
+      
+      if (videoRef) {
+        videoRef.srcObject = stream;
+        videoRef.play();
+      }
 
-    setShowStop(true);
+      // Initialize the websocket connection
+      try {
+        const response = await fetch(serverUrl(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requestType: 'videoStream',
+            mode: selectedMode(),
+          }),
+        });
+
+        if (response.ok) {
+          const jsonResponse = await response.json();
+          setResponseStatus(jsonResponse.response_status);
+          const wsUrl = jsonResponse.websocket_url;
+
+          websocket = new WebSocket(wsUrl);
+
+          websocket.onopen = function(event) {
+            console.log("WebSocket is open now.");
+            setStartTime(Date.now());
+            setIsStreaming(true);
+            startFrameCapture();
+          };
+
+          websocket.onmessage = handleWebSocketMessage;
+          websocket.onclose = () => {
+            setLogMessages(prev => [...prev, 'WebSocket closed.']);
+            setIsStreaming(false);
+          };
+          websocket.onerror = (error) => {
+            setLogMessages(prev => [...prev, `WebSocket error: ${error}`]);
+            setIsStreaming(false);
+          };
+
+          setResponseMessage("Video stream started successfully!");
+          setResponseStatus(200);
+        } else {
+          console.error('Failed to initialize video stream');
+          setResponseMessage("Failed to initialize video stream");
+          setResponseStatus(response.status);
+        }
+      } catch (error) {
+        setResponseMessage("Error connecting to server.");
+        setResponseStatus(500);
+        stopVideoStream();
+      } finally {
+        setLoading(false);
+      }
+    } catch (error) {
+      setLogMessages(prev => [...prev, `Error starting video: ${error.message}`]);
+      setLoading(false);
+    }
   };
 
-  const stop = () => {
-    setShowStop(false);
-
-    if (dc) {
-      dc.close();
+  const stopVideoStream = () => {
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
     }
 
-    if (pc.getTransceivers) {
-      pc.getTransceivers().forEach(transceiver => {
-        if (transceiver.stop) {
-          transceiver.stop();
-        }
-      });
+    if (websocket) {
+      websocket.close();
+      websocket = null;
     }
 
-    pc.getSenders().forEach(sender => {
-      sender.track.stop();
-    });
+    if (videoStream()) {
+      videoStream().getTracks().forEach(track => track.stop());
+      setVideoStream(null);
+    }
 
-    setTimeout(() => {
-      pc.close();
-    }, 500);
+    if (videoRef) {
+      videoRef.srcObject = null;
+    }
+
+    setIsStreaming(false);
+    setLogMessages(prev => [...prev, 'Video stream stopped.']);
   };
 
-  const sdpFilterCodec = (kind, codec, realSdp) => {
-    var allowed = []
-    var rtxRegex = new RegExp('a=fmtp:(\\d+) apt=(\\d+)\r$');
-    var codecRegex = new RegExp('a=rtpmap:([0-9]+) ' + escapeRegExp(codec))
-    var videoRegex = new RegExp('(m=' + kind + ' .*?)( ([0-9]+))*\\s*$')
+  const startFrameCapture = () => {
+    if (!canvasRef || !videoRef || !isStreaming()) return;
 
-    var lines = realSdp.split('\n');
-
-    var isKind = false;
-    for (var i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('m=' + kind + ' ')) {
-            isKind = true;
-        } else if (lines[i].startsWith('m=')) {
-            isKind = false;
-        }
-
-        if (isKind) {
-            var match = lines[i].match(codecRegex);
-            if (match) {
-                allowed.push(parseInt(match[1]));
-            }
-
-            match = lines[i].match(rtxRegex);
-            if (match && allowed.includes(parseInt(match[2]))) {
-                allowed.push(parseInt(match[1]));
-            }
-        }
-    }
+    const context = canvasRef.getContext('2d');
+    
+    const captureAndSendFrame = () => {
+      if (!isStreaming()) return;
+      
+      // Draw the current video frame to the canvas
+      context.drawImage(videoRef, 0, 0, canvasRef.width, canvasRef.height);
+      
+      // Only send frame if websocket is connected
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        // Convert canvas to blob and send
+        canvasRef.toBlob((blob) => {
+          // Convert blob to base64 for sending over websocket
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = reader.result;
+            
+            // Send the frame data over WebSocket
+            websocket.send(JSON.stringify({
+              type: 'videoFrame',
+              mode: selectedMode(),
+              image: base64data
+            }));
+          };
+          reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.8);  // Use JPEG with 80% quality for better performance
+      }
+      
+      // Request the next frame
+      animationFrameId = requestAnimationFrame(captureAndSendFrame);
+    };
+    
+    // Start the capture loop
+    animationFrameId = requestAnimationFrame(captureAndSendFrame);
   };
 
   onMount(() => {
@@ -243,103 +279,144 @@ const VideoCNN = () => {
   });
 
   onCleanup(() => {
-    if (dc) {
-      dc.close();
-    }
-    if (pc) {
-      pc.close();
-    }
+    stopVideoStream();
   });
 
   return (
-    <div class="text-white p-4">
-      <h2 class="text-2xl font-bold mb-4">Video WebRTC</h2>
-      {error() && (
-        <div class="bg-red-900 border border-white-900 text-white px-4 py-3 rounded mb-4" role="alert">
-          <p>{error()}</p>
-        </div>
-      )}
-      <div class="mb-4">
-        <h3 class="text-xl font-semibold mb-2">Settings:</h3>
-        <div class='border border-black shadow-md mx-auto flex flex-col px-2 gap-2'>
-          <button 
-            class='self-end text-gray-500 hover:text-gray-700'
-            onClick={() => setIsOpen(!isOpen())}
-          >
-            {isOpen() ? '▼ Close' : '▶ Open'}
-          </button>
-          {isOpen() && (
-            <>
-              <label for="use-datachannel" class="flex items-center">
-                <input type='checkbox' id='use-datachannel' class="mr-2" />
-                Use Datachannel?
-              </label>
-              <select id="datachannel-parameters" class="text-black p-2 border rounded">
-                <option value='{"ordered": true}'>Ordered, reliable</option>
-                <option value='{"ordered": false, "maxRetransmits": 0}'>Unordered, no retransmissions</option>
-                <option value='{"ordered": false, "maxPacketLifetime": 500}'>Unordered, 500ms lifetime</option>
-              </select>
-              <select id="video-codec" class="text-black p-2 border rounded">
-                <option value="default" selected>Default codecs</option>
-                <option value="VP8/90000">VP8</option>
-                <option value="H264/90000">H264</option>
-              </select>
-              <select id="video-resolution" class="text-black p-2 border rounded">
-                <option value="" selected>Default resolution</option>
-                <option value="320x240">320x240</option>
-                <option value="640x480">640x480</option>
-                <option value="960x540">960x540</option>
-                <option value="1280x720">1280x720</option>
-              </select>
-              <label for="use-stun" class="flex items-center">
-                <input type='checkbox' id='use-stun' class="mr-2" />
-                Use STUN?
-              </label>
-            </>
-          )}
-        </div>
-        <h3 class="text-xl font-semibold mt-4 mb-2">Video Devices</h3>
-        <div>
-          <label for="video-input" class="mr-2">Video Input:</label>
-          <select
-            id="video-input"
-            value={selectedVideoInput()}
-            onChange={(e) => setSelectedVideoInput(e.target.value)}
-            class="text-black p-2 border rounded"
-          >
-            <For each={videoInputs()}>
-              {(device) => (
+    <div class="text-white flex flex-col items-center p-4 min-h-screen">
+      <div class="flex flex-col items-center w-full max-w-md mt-4">
+        <h2 class="text-2xl font-bold mb-4">Video CNN Processing</h2>
+        
+        {/* Video device selection - only shown when not streaming */}
+        {!isStreaming() && (
+          <div class="mb-4 w-full">
+            <label class="block mb-2">Video Input Device:</label>
+            <select
+              value={selectedVideoInput()}
+              onChange={(e) => setSelectedVideoInput(e.target.value)}
+              class="bg-black w-full border border-gray-300 p-2 rounded"
+            >
+              {videoInputs().map((device) => (
                 <option value={device.deviceId}>
                   {device.label || `Video Device ${device.deviceId.substr(0, 5)}`}
                 </option>
-              )}
-            </For>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        {/* Start/Stop button */}
+        <button
+          onClick={startVideoStream}
+          class={`${isStreaming() ? 'bg-red-500 border-red-700' : 'bg-[#ff9500] border-[#e56e00]'} text-white py-2 px-4 rounded border-2 font-bold mb-4`}
+        >
+          {isStreaming() ? "Stop Video" : "Start Video"}
+        </button>
+        
+        {/* Video display */}
+        <div class="flex flex-col md:flex-row w-full gap-4">
+          <div class="flex-1">
+            <h3 class="mb-2">Input Video:</h3>
+            <video 
+              ref={videoRef} 
+              width="320" 
+              height="240" 
+              autoplay 
+              playsinline 
+              muted 
+              class="bg-black border border-gray-700 w-full"
+            ></video>
+            <canvas 
+              ref={canvasRef} 
+              width="320" 
+              height="240" 
+              class="hidden"
+            ></canvas>
+          </div>
+          
+          {outputImage() && (
+            <div class="flex-1">
+              <h3 class="mb-2">Processed Output:</h3>
+              <img 
+                src={outputImage()} 
+                alt="Processed Video Frame" 
+                class="bg-black border border-gray-700 w-full" 
+                style={{ height: '240px', 'object-fit': 'contain' }}
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Log display */}
+        <div class="bg-gray-800 p-3 mt-4 w-full max-w-md overflow-y-auto h-32 border border-gray-600 rounded">
+          <h3 class="text-sm font-bold">Logs:</h3>
+          <div class="text-xs whitespace-pre-wrap">{logMessages().join('\n')}</div>
+        </div>
+        
+        {elapsedTime() !== null && (
+          <div class="mt-4 text-sm">
+            <strong>Elapsed Time:</strong> {elapsedTime()} minute/-s
+          </div>
+        )}
+      </div>
+      
+      {/* Notification component */}
+      {responseMessage() && (
+        <ResponseNotification
+          message={responseMessage()}
+          status={responseStatus()}
+          onClose={closeNotification}
+        />
+      )}
+      
+      {/* Mode selection dropdown - only shown when not streaming */}
+      {!isStreaming() && (
+        <div class="flex flex-col items-center mt-6 w-full max-w-md">
+          <h3 class="mb-2">Processing Mode:</h3>
+          <select
+            name="settings"
+            id="settings"
+            class="bg-black mb-4 border border-gray-300 p-2 rounded w-full sm:w-40"
+            value={selectedMode()}
+            onChange={handleModeChange}
+          >
+            <optgroup label="Edge Detection">
+              <option value="edge_detect_">Edge Detection (Él detektálás)</option>
+              <option value="grayscale_edge_detect_">Grayscale Edge Detection (Szürke él detektálás)</option>
+              <option value="optimal_edge_detect_">Optimal Edge Detect</option>
+              <option value="edge_enhance_">Edge enhance</option>
+              <option value="laplacian_edge_">Laplacian Edge Detect</option>
+            </optgroup>
+            <optgroup label="Line Detection">
+              <option value="diagonal_line_detect_">Diagonal line detection</option>
+              <option value="horizontal_line_detect_">Horizontal Line Detect</option>
+              <option value="vertical_line_detect_">Vertical Line Detect</option>
+            </optgroup>
+            <optgroup label="Image Processing">
+              <option value="inversion_">Inversion (Inverz)</option>
+              <option value="noise_removal_">Noise removal</option>
+              <option value="sharpen_">Sharpen</option>
+              <option value="halftone_">Halftone</option>
+              <option value="diffusion_">Diffusion</option>
+            </optgroup>
+            <optgroup label="Object Detection">
+              <option value="corner_detect_">Corner detection (Sarok detektálás)</option>
+              <option value="blob_detect_">Blob detect</option>
+              <option value="texture_segment_">Texture segmentation</option>
+            </optgroup>
+            <optgroup label="Motion and Shadow">
+              <option value="motion_detect_">Motion detection</option>
+              <option value="shadow_detect_">Shadow Detection</option>
+            </optgroup>
+            <optgroup label="Other">
+              <option value="connected_comp_">Connected Components</option>
+              <option value="saved_">Saved</option>
+            </optgroup>
           </select>
         </div>
-      </div>
-      <div class="mb-4">
-        <button onClick={start} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-2" style={{ display: showStart() ? 'inline-block' : 'none' }}>Start</button>
-        <button onClick={stop} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" style={{ display: showStop() ? 'inline-block' : 'none' }}>Stop</button>
-      </div>
-      <h3 class="text-xl font-semibold mb-2">Data Channel</h3>
-      <pre id="data-channel" class="bg-gray-700 p-2 rounded">Loaded when connection made<br/>{dataChannelLog()}</pre>
-      <h3 class="text-xl font-semibold mb-2">ICE Connection State</h3>
-      <p id="ice-connection-state">{iceConnectionLog()}</p>
-      <h3 class="text-xl font-semibold mb-2">ICE Gathering State</h3>
-      <p id="ice-gathering-state">{iceGatheringLog()}</p>
-      <h3 class="text-xl font-semibold mb-2">Signaling State</h3>
-      <p id="signaling-state">{signalingLog()}</p>
-      <h3 class="text-xl font-semibold mb-2">SDP Offer</h3>
-      <pre id="offer-sdp" class="bg-gray-700 p-2 rounded overflow-auto max-h-40">Loaded when connection made<br/>{offerSdp()}</pre>
-      <h3 class="text-xl font-semibold mb-2">SDP Answer</h3>
-      <pre id="answer-sdp" class="bg-gray-700 p-2 rounded overflow-auto max-h-40">Loaded when connection made<br/>{answerSdp()}</pre>
-      <div id="media" style={{ display: showMedia() ? 'block' : 'none' }}>
-        <h3 class="text-xl font-semibold mb-2">Media</h3>
-        <video id="video" autoplay playsinline class="w-full max-w-lg mx-auto"></video>
-      </div>
+      )}
     </div>
   );
-  
-};
+}
 
 export default VideoCNN;

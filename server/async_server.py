@@ -56,6 +56,7 @@ class AsyncServer:
         app.add_routes([
             web.post('/offer', self.handle_offer),
             web.post('/tasks', self.handle_request),
+            web.post('/api/sparam', self.save_parameters),
             web.get('/ws/{task_id}', self.websocket_handler),  
             web.get('/', self.handle_index)          
         ])        
@@ -74,6 +75,57 @@ class AsyncServer:
         except Exception as e:
             await self.log_to_file(f"Failed to start Julia socket server on {self.host}:{self.julia_port}: {e}")
             return
+
+    async def save_parameters(self, request):
+        try:
+            json_data = await request.json()
+        except Exception as e:
+            json_data = None
+
+        if json_data is not None:
+            # Unpack the fields from json_data
+
+            try:
+                radius = np.uint8(json_data.get('radius', None))
+            except ValueError:
+                return web.json_response({"error": "Invalid radius value or not value. It must be an integer."}, status=400)
+
+            if radius != 0:
+                def safe_float(value, default=0.0):
+                    try:
+                        if isinstance(value, str) and value.strip() == '':
+                            return default
+                        return np.float64(value)
+                    except (ValueError, TypeError):
+                        return default
+                try:
+                    fdb_list = json_data.get('fdb', [])
+                    ctrl_list = json_data.get('ctrl', [])
+
+                    # Convert each element using safe_float
+                    fdb = np.array([safe_float(val) for val in fdb_list], dtype='float64')
+                    ctrl = np.array([safe_float(val) for val in ctrl_list], dtype='float64')
+
+                    bias = safe_float(json_data.get('bias', 0.0))
+                    tspan = safe_float(json_data.get('tspan', 0))
+                    initial = safe_float(json_data.get('initial', 1.0))
+                    stepsize = safe_float(json_data.get('stepsize', 0.1))
+
+                except Exception as e:
+                    return web.json_response(status=500, text=f"Error {e}")
+                try:
+                    status, text = utils.process_saving(radius=radius, fdb=fdb, ctrl=ctrl, bias=bias, tspan=tspan, initial=initial, stepsize=stepsize)
+                    return web.Response(
+                        status=status,
+                        text=text
+                    )
+                except ValueError as e:
+                    return web.json_response({"error": str(e)}, status=400)
+            else:
+                return web.json_response(status=200, text="The radius is 0, excepted minimum of 1!")
+
+        else:
+            response_text = 'No valid JSON data received.'
 
     async def websocket_handler(self, request):
         task_id = request.match_info['task_id']

@@ -1,11 +1,16 @@
 import { createSignal, createEffect, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 
+function isLocalhost() {
+  return window.location.hostname === '0.0.0.0' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+}
+
 const STX = () => {
     const navigate = useNavigate();
     const [radius, setRadius] = createSignal(0);
     const [table, setTable] = createSignal([]);
     const [inputs, setInputs] = createSignal({});
+    const [serverUrl, setServerUrl] = createSignal(isLocalhost() ? 'http://localhost:9000/api/sparam' : '192.168.0.102:9000/api/sparam');
 
     let radiusRef;
     let formRef;
@@ -42,7 +47,7 @@ const STX = () => {
         console.log(dataToSend);
 
         try {
-            const response = await fetch("/stx", {
+            const response = await fetch(serverUrl(), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

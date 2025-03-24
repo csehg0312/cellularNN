@@ -79,7 +79,7 @@ function MatrixVisualizer() {
   };
   return (
     <div class="matrix-visualizer bg-gray-800 p-4 rounded-lg mt-6 w-full max-w-md text-white">
-      <h2 class="text-xl font-bold mb-4">Matrix Visualizer</h2>
+      <h2 class="text-xl font-bold mb-4">Mátrixok és feldolgozási paraméterek</h2>
 
       <Show when={error()}>
         <div class="bg-red-600 p-3 rounded mb-4">
@@ -89,25 +89,25 @@ function MatrixVisualizer() {
 
       <Show when={showVisualizer()}>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {renderMatrix(matrixA(), 'Matrix A')}
-          {renderMatrix(matrixB(), 'Matrix B')}
+          {renderMatrix(matrixA(), 'Visszacsatolási mátrix')}
+          {renderMatrix(matrixB(), 'Kontroll mátrix')}
         </div>
 
         <div class="mt-6 p-3 bg-gray-700 rounded">
           <div class="mb-2">
-            <span class="font-bold">Ib Bias:</span> {ibBias() !== null ? ibBias().toFixed(4) : 'N/A'}
+            <span class="font-bold">Ib (bejövő áramerősség):</span> {ibBias() !== null ? ibBias().toFixed(4) : 'N/A'}
           </div>
           <div class="mb-2">
-            <span class="font-bold">Time Range:</span> {timeStart() !== null ? timeStart().toFixed(2) : 'N/A'} to {timeEnd() !== null ? timeEnd().toFixed(2>          </div>
+            <span class="font-bold">T idő (A vizsgált időpillanat):</span> {timeStart() !== null ? timeStart().toFixed(2) : 'N/A'} to {timeEnd() !== null ?>          </div>
           <div>
-            <span class="font-bold">Time Elapsed:</span> {timeElapsed() !== null ? timeElapsed().toFixed(2) : 'N/A'} seconds
+            <span class="font-bold">Adatok szerverre érkezése és válasz</span> {timeElapsed() !== null ? timeElapsed().toFixed(2) : 'N/A'} seconds
           </div>
         </div>
       </Show>
 
       <Show when={!showVisualizer()}>
         <div class="text-center p-6 bg-gray-700 rounded">
-          <p>No matrix data available yet. Upload an image and process it to see results.</p>
+          <p>Feldolgozási adatok még nem érhetőek el. Töltsön fel egy képet az Upload File gombbal.</p>
         </div>
       </Show>
     </div>

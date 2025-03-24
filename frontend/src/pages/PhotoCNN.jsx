@@ -1,6 +1,8 @@
 import { createSignal } from 'solid-js';
 import ResponseNotification from '../components/ResponseNotification';
 import UploadButton from '../components/UploadButton';
+import MatrixVisualizer from '../components/MatrixVisualizer';
+import ImageViewer from '../components/ImageViewer';
 import './PhotoCNN.module.css'; // Ensure you use this file if needed for additional styles
 
 function isLocalhost() {

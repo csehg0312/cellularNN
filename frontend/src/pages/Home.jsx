@@ -9,105 +9,95 @@ function Navbar() {
   };
 
   return (
-    <nav className="py-6 bg-custom-darkGray text-custom-white border border-custom-graphite shadow-sm">
-      <div className="container mx-auto flex justify-between items-center px-8">
-        <div className="flex items-center">
-          <button
-            onClick={toggleMenu}
-            className="text-custom-white focus:outline-none md:hidden"
-          >
-            {isOpen() ? "Close" : "Menu"}
-          </button>
-        </div>
-        <ul className={`flex-col space-y-4 ${isOpen() ? "flex" : "hidden"} md:flex md:flex-row md:space-x-8`}>
+    <nav className="py-6 bg-custom-darkGray text-custom-white border border-custom-graphite shadow-sm relative">
+      <div className="container mx-auto flex justify-between items-center px-6 md:px-8">
+        <a href="/" className="text-xl font-bold text-custom-white">CNN WebApp</a>
+        
+        <button
+          onClick={toggleMenu}
+          className="text-custom-white focus:outline-none md:hidden"
+          aria-label="Toggle Menu"
+        >
+          {isOpen() ? "✖" : "☰"}
+        </button>
+        
+        <ul className={`md:flex md:space-x-6 hidden`}> 
           <li>
-            <a
-              href="/photocnn"
-              className="border-b-2 pb-2 transition-colors text-custom-white hover:text-custom-deepOrange border-custom-graphite hover:border-custom-tangerine"
-            >
-              Photo CNN
-            </a>
+            <a href="/photocnn" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Photo CNN</a>
           </li>
           <li>
-            <a
-              href="/videocnn"
-              className="border-b-2 pb-2 transition-colors text-custom-white hover:text-custom-deepOrange border-custom-graphite hover:border-custom-tangerine"
-            >
-              Video CNN
-            </a>
+            <a href="/videocnn" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Video CNN</a>
           </li>
           <li>
-            <a
-              href="/stx"
-              className="border-b-2 pb-2 transition-colors text-custom-white hover:text-custom-deepOrange border-custom-graphite hover:border-custom-tangerine"
-            >
-              Paraméterek létrehozása
-            </a>
+            <a href="/stx" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Paraméterek létrehozása</a>
           </li>
           <li>
-            <a
-              href="/licenses"
-              className="border-b-2 pb-2 transition-colors text-custom-white hover:text-custom-deepOrange border-custom-graphite hover:border-custom-tangerine"
-            >
-              Licenses
-            </a>
+            <a href="/licenses" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Licenses</a>
           </li>
         </ul>
       </div>
+      
+      {/* Mobil menü */}
+      <ul className={`absolute top-full left-0 w-full bg-custom-darkGray p-4 md:hidden transition-all ${isOpen() ? "block" : "hidden"}`}>
+        <li>
+          <a href="/photocnn" className="block py-2 text-custom-white hover:text-custom-deepOrange">Photo CNN</a>
+        </li>
+        <li>
+          <a href="/videocnn" className="block py-2 text-custom-white hover:text-custom-deepOrange">Video CNN</a>
+        </li>
+        <li>
+          <a href="/stx" className="block py-2 text-custom-white hover:text-custom-deepOrange">Paraméterek létrehozása</a>
+        </li>
+        <li>
+          <a href="/licenses" className="block py-2 text-custom-white hover:text-custom-deepOrange">Licenses</a>
+        </li>
+      </ul>
     </nav>
   );
 }
 
 
 function Home() {
-
   return (
-    // class="container mx-auto p-4 pt-6 md:p-6 lg:p-12"
-    <div className={`${styles.container} relative`}>
+    <div className="relative container mx-auto p-6 text-white">
       <Navbar />
-
-      <div class="w-screen max-w-full text-white bg-opacity-50 p-4">
-        <h1 class="text-3xl font-bold mb-4">Mi az a celluláris neurális hálózat?</h1>
-        <p class="text-lg mb-8">A celluláris neurális hálózat (CNN) egy speciális típusú neurális hálózat, amely az emberi agy struktúráját és működését mintázza. A hagyományos neurális hálózatokkal ellentétben, amelyek rétegekben vannak szervezve, a CNN egy összekapcsolt sejtekből álló rácsot alkot, ahol minden sejt hasonlóan működik, mint az agyban lévő neuron.</p>
+      
+      <div className="w-screen max-w-full bg-opacity-50 p-4">
+        <h1 className="text-3xl font-bold mb-4">Celluláris Neurális Hálózatok és Webalkalmazásunk</h1>
         
-        <h2 class="text-2xl font-bold mb-4">Hogyan Működik?</h2>
-        <p class="text-lg mb-8">A celluláris neurális hálózatban a sejtek két dimenziós rácsban vagy hálózatban vannak elrendezve. Minden sejt kölcsönhatásba lép közvetlen szomszédaival. Az alábbi lépéseket követi:</p>
-        <ul class="list-disc pl-4 mb-8">
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Bemeneti Adatok Fogadása</h2>
-            <p class="text-lg mb-8" >Minden sejt azonnal szomszédaitól kap bemenetet. Ezek a bemenetek szomszédos sejtektől származhatnak, vagy külső forrástól, ha a rács határfeltételekkel van kialakítva.</p>
-          </li>
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Számítás</h2>
-            <p class="text-lg mb-8" >Minden sejt elvégez egy számítást a kapott bemenetek alapján. Ez a számítás általában bemenetek súlyozott összegeit tartalmazza, majd aktiváló függvény alkalmazásával meghatározza a kimenetet.</p>
-          </li>
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Kimenet Továbbítása</h2>
-            <p class="text-lg mb-8" >Miután kiszámította a kimenetet, minden sejt továbbítja ezt a kimenetet szomszédos sejteinek. Ez a folyamat lehetővé teszi, hogy a hálózat információt terjesszen a rácson keresztül, és a helyi kölcsönhatások alapján alkalmazkodjon.</p>
-          </li>
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Visszacsatolás és Kiegyenlítés</h2>
-            <p class='text-lg mb-8'>A hálózat tartalmazhat visszacsatolási mechanizmusokat, ahol a sejtek az általuk kapott kimenetek alapján módosítják viselkedésüket, lehetővé téve a hálózat számára, hogy alkalmazkodjon és finomítsa feldolgozását idővel.</p>
-          </li>
-        </ul>
-        <h2 class="text-2xl font-bold mb-4">Alkalmazások: </h2>
-        <p class='text-lg mb-8'>A celluláris neurális hálózatok különösen hasznosak olyan területeken, ahol a helyi kölcsönhatások és térbeli minták fontosak. Néhány gyakori alkalmazás:</p>
-        <ul class="list-disc pl-4 mb-8">
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Képkezelés</h2>
-            <p class='text-lg mb-8'>A CNN-eket használhatják olyan feladatokhoz, mint a szélvédő-érzékelés, zajcsökkentés és képjavítás, kihasználva a helyi minták feldolgozásának képességét.</p>
-          </li>
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Minta felismerés</h2>
-            <p class='text-lg mb-8'>A CNN-eket használhatják olyan feladatokhoz, mint a szélvédő-érzékelés, zajcsökkentés és képjavítás, kihasználva a helyi minták feldolgozásának képességét.</p>
-          </li>
-          <li>
-            <h2 class="text-2xl font-bold mb-4">Optimalizálási problémák</h2>
-            <p class='text-lg mb-8'>A CNN-ek alkalmazhatók olyan optimalizálási problémákra, ahol a térbeli kapcsolatok és helyi kölcsönhatások kulcsszerepet játszanak, például ütemezésben vagy erőforrás-elosztásban.</p>
-          </li>
-        </ul>
+        <p className="text-lg mb-6">
+          A Chua-Yang-féle celluláris neurális hálózatok (CNN) speciális matematikai modellek,
+          amelyek képfeldolgozási és mintázatfelismerési feladatokban kiemelkedően hatékonyak.
+          Ezek a hálózatok egy rács szerkezetű sejthálózatként működnek, ahol minden sejt a szomszédaival kommunikál.
+        </p>
+        
+        <p className="text-lg mb-6">
+          Az ilyen hálózatok előnye, hogy képesek párhuzamosan nagy mennyiségű adatot feldolgozni,
+          miközben a helyi kölcsönhatások révén globális mintázatokat ismernek fel. A Chua-Yang modell
+          egyik különlegessége, hogy az analóg és digitális számítások kombinációjával hatékonyan alkalmazható
+          különböző képfeldolgozási technikákban, például élkiemelésben, textúraelemzésben és zajcsökkentésben.
+        </p>
+        
+        <h2 className="text-2xl font-bold mb-4">Webalkalmazásunk</h2>
+        <p className="text-lg mb-6">
+          Webalkalmazásunk lehetőséget biztosít celluláris neurális hálózatok alkalmazására képfeldolgozási feladatokhoz.
+          Két fő oldal érhető el: <strong>PhotoCNN</strong> és <strong>Paraméterek létrehozása</strong>.
+        </p>
+        
+        <h2 className="text-xl font-bold mb-3">PhotoCNN</h2>
+        <p className="text-lg mb-6">
+          Ezen az oldalon feltölthetsz egy képet, kiválaszthatod a kívánt képfeldolgozási módot,
+          és a szerver elvégzi a kívánt műveletet. A feldolgozott kép nagyított nézetben is megtekinthető,
+          valamint az alkalmazott <strong>visszacsatolási séma</strong>, <strong>kontroll séma</strong> és <strong>időköz</strong> is megjelenik.
+          Lehetőség van saját mentett feldolgozási beállítások betöltésére is.
+        </p>
+        
+        <h2 className="text-xl font-bold mb-3">Paraméterek létrehozása</h2>
+        <p className="text-lg mb-6">
+          Itt saját feldolgozási beállításokat adhatsz meg és mentheted el a szerveren,
+          amelyeket később a <strong>PhotoCNN</strong> oldalon használhatsz.
+        </p>
       </div>
-
     </div>
   );
 }

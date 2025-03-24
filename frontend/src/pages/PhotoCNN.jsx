@@ -27,6 +27,9 @@ function PhotoCNN() {
   const [elapsedTime, setElapsedTime] = createSignal(null); // New state for elapsed time
   const [startTime, setStartTime] = createSignal(null);
 
+  // New state for matrix data
+  const [matrixData, setMatrixData] = createSignal(null);
+
   const handleModeChange = (e) => {
     setSelectedMode(e.target.value);
   };
@@ -86,6 +89,16 @@ function PhotoCNN() {
             }
           } else {
             setLogMessages(prev => [...prev, 'Invalid image data format - missing data:image/ prefix']);
+          }
+          break;
+        case 'matrix_data':
+          // Handle matrix data
+          setLogMessages(prev => [...prev, 'Matrix data received']);
+          if (payload && typeof payload === 'object') {
+            setMatrixData(payload);
+            // Dispatch custom event for MatrixVisualizer
+            const event = new CustomEvent('serverDataReceived', { detail: payload });
+            window.dispatchEvent(event);
           }
           break;
   
@@ -167,6 +180,23 @@ function PhotoCNN() {
 
         const jsonResponse = await response.json();
         setResponseStatus(jsonResponse.response_status);
+        // Check if response contains matrix data directly
+        if (jsonResponse.tempA && jsonResponse.tempB) {
+          // Store the matrix data
+          const matrixPayload = {
+            tempA: jsonResponse.tempA,
+            tempB: jsonResponse.tempB,
+            Ib: jsonResponse.Ib,
+            start: jsonResponse.start,
+            end: jsonResponse.end
+          };
+          setMatrixData(matrixPayload);
+          // Dispatch event for the MatrixVisualizer component
+          const event = new CustomEvent('serverDataReceived', { detail: matrixPayload });
+          window.dispatchEvent(event);
+
+          setLogMessages(prev => [...prev, 'Matrix data received directly in response']);
+        }
         const wsUrl = jsonResponse.websocket_url;
 
         const socket = new WebSocket(wsUrl);
@@ -237,7 +267,7 @@ function PhotoCNN() {
             width: "100%",
           }}
         >
-          <p>{image() === null ? "Húzzon ide egy képet, vagy kattintson fel a feltöltéshez" : "Dobjon ide egy másik képet, hogy helyettesítse azt."}</p>
+           <p>{image() === null ? "Húzzon ide egy képet, vagy kattintson fel a feltöltéshez" : "Dobjon ide egy másik képet, hogy helyettesítse azt."}</p>
         </div>
 
         {image() && (
@@ -247,24 +277,25 @@ function PhotoCNN() {
           </div>
         )}
 
-        {console.log('Output image:', outputImage())}
-        {outputImage() && (
-          <div class="flex flex-col items-center">
-            <h3 class="mb-2">Output Image:</h3>
-            <img src={outputImage()} alt="Processed" class="w-full max-w-sm" />
-          </div>
-        )}
+        {/* Replace the basic image display with ImageViewer component */}
+        <ImageViewer
+          inputImage={image()}
+          outputImage={outputImage()}
+        />
+
+        {/* Add the MatrixVisualizer component */}
+        <MatrixVisualizer />
+
         <div class="bg-gray-800 p-3 mt-4 w-full max-w-md overflow-y-auto h-32 border border-gray-600 rounded">
           <h3 class="text-sm font-bold">Logs:</h3>
           <div class="text-xs whitespace-pre-wrap">{logMessages().join('\n')}</div>
         </div>
 
-
         {elapsedTime() !== null && (
           <div class="mt-4 text-sm">
             <strong>Elapsed Time:</strong> {elapsedTime()} minute/-s
           </div>
-          )}
+        )}
       </div>
 
       {/* Render ResponseNotification */}
@@ -275,7 +306,7 @@ function PhotoCNN() {
           onClose={closeNotification} // Pass the close function
         />
       )}
-
+      
       <div class="flex flex-col items-center mt-6 w-full max-w-md">
         <h3 class="mb-2">Mode (Mód):</h3>
         <select

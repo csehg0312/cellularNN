@@ -4,7 +4,7 @@ import os
 def run_install():
     # Use the full path to the Julia executable
     julia_executable = "julia"
-    julia_env_path = os.path.expanduser("~/app/JuliaWorker")
+    julia_env_path = os.path.expanduser("/app/JuliaWorker")
     print(f"Starting script to install julia dependecies! \n Please be patient! It can take 10+ minutes. \n")
     # Define the Julia script
     julia_script = f"""

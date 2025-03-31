@@ -98,7 +98,7 @@ function MatrixVisualizer() {
             <span class="font-bold">Ib (bejövő áramerősség):</span> {ibBias() !== null ? ibBias().toFixed(4) : 'N/A'}
           </div>
           <div class="mb-2">
-            <span class="font-bold">T idő (A vizsgált időpillanat):</span> {timeStart() !== null ? timeStart().toFixed(2) : 'N/A'} to {timeEnd() !== null ?>          </div>
+            <span class="font-bold">T idő (A vizsgált időpillanat):</span> {timeStart() !== null ? timeStart().toFixed(2) : 'N/A'} to {timeEnd() !== null ? timeEnd().toFixed(2) : 'N/A'}
           <div>
             <span class="font-bold">Adatok szerverre érkezése és válasz</span> {timeElapsed() !== null ? timeElapsed().toFixed(2) : 'N/A'} seconds
           </div>

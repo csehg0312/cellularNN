@@ -324,6 +324,7 @@ function PhotoCNN() {
             <option value="optimal_edge_detect_">Optimal Edge Detect</option>
             <option value="edge_enhance_">Edge enhance</option>
             <option value="laplacian_edge_">Laplacian Edge Detect</option>
+            <option value="sobel_edge_detect">Sobel Edge Detection</option>
           </optgroup>
           <optgroup label="Line Detection">
             <option value="diagonal_line_detect_">Diagonal line detection</option>
@@ -338,6 +339,8 @@ function PhotoCNN() {
             <option value="diffusion_">Diffusion</option>
           </optgroup>
           <optgroup label="Object Detection">
+            <option value="circle_detect_">Circle detection (Kör detektálás)</option>
+            <option value="rectangle_detect_">Rectangle detection (Négyzet detektálás)</option>
             <option value="corner_detect_">Corner detection (Sarok detektálás)</option>
             <option value="blob_detect_">Blob detect</option>
             <option value="texture_segment_">Texture segmentation</option>

@@ -41,7 +41,7 @@ const STX = () => {
             bias: biasVal.value.trim(),
             tspan: tspanVal.value,
             initial:initialVal.value,
-            steps:stepsVal.value
+            stepsize:stepsizeVal.value
         };
 
         console.log(dataToSend);
@@ -220,6 +220,7 @@ const STX = () => {
                         <input class="linspace w-full p-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" 
                         type="range" 
                         id="tspanVal"
+                        step="0.1"
                         // value={0.0}
                         min="0"
                         max="20"
@@ -228,10 +229,10 @@ const STX = () => {
                         <span id="rangeValue" class="text-sm text-gray-900 dark:text-gray-100">0-20</span>
                     </div>
                     <div class="overflow-x-auto">
-                        <h4 class="text-md font-medium leading-6 text-black" >Lépések száma (Egész szám):</h4>
+                        <h4 class="text-md font-medium leading-6 text-black" >Delta t - Lépés mérete (Tizedes szám):</h4>
                         <input class="w-full p-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" 
                         type="number" 
-                        id="stepsVal"
+                        id="stepsizeVal"
                         // value={0.0}
                         step="0.1" 
                         placeholder="1" 

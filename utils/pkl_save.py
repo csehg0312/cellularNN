@@ -39,6 +39,27 @@ def main():
   diagonal_line_detect_t = np.linspace(0, 0.2, num=101)
   diagonal_line_detect_Ib = -4.0
   diagonal_line_detect_init = 0.0
+
+  # Sobel Edge Detection
+  sobel_edge_detect_A = np.array([[1.0, 1.0, 1.0], [1.0, -8.0, 1.0], [1.0, 1.0, 1.0]])
+  sobel_edge_detect_B = np.array([[0.0, -1.0, 0.0],[-1.0, 4.0, -1.0],[0.0, -1.0, 0.0]])
+  sobel_edge_detect_t = np.arange(0.1, 0.3+0.01, 0.01)
+  sobel_edge_detect_Ib = -0.5
+  sobel_edge_detect_init = 0.0
+
+  # Circle detection
+  circle_detect_A = np.array([[0.0, -1.0, 0.0], [-1.0,4.0,-1.0], [0.0, -1.0, 0.0]])
+  circle_detect_B = np.array([[0.0,1.0,0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
+  circle_detect_Ib = -0.5
+  circle_detect_t = np.arange(0.1,0.5 + 0.1, 0.1)
+  circle_detect_init = 0.0
+  
+  # Rectangle detection
+  rectangle_detect_A = np.array([[-1.0, 2.0, -1.0], [2.0,-4.0,2.0], [-1.0, 2.0, -1.0]])
+  rectangle_detect_B = np.array([[1.0, 0.0, 1.0], [0.0, -4.0, 0.0], [1.0, 0.0, 1.0]])
+  rectangle_detect_Ib = -0.5
+  rectangle_detect_t = np.arange(0.1,0.3 + 0.01, 0.01)
+  rectangle_detect_init = 0.0
   
   #Inversion
   inversion_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])

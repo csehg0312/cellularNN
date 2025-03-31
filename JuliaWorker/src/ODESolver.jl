@@ -69,24 +69,40 @@ end
 function process_and_generate_image(z, n, m, wsocket)
     out_l = reshape(z, n, m)
 
-    # Simplified conversion and thresholding
-    @turbo for i in eachindex(out_l)
-        val = Activation.safe_activation(out_l[i])
-        out_l[i] = val > 0 ? 255.0 : 0.0
-    end
+    # Threshold values and check for NaN/Inf
+    out_l .= ifelse.(isnan.(out_l) .| isinf.(out_l), 0.0, ifelse.(out_l .> 0, 255.0, 0.0))
+
     try
-        # Create and encode image
-        binary_image = Gray.(out_l ./ 255)
-        io = IOBuffer()
-        FileIO.save(Stream(format"PNG", io), binary_image)
-        binary_data = take!(io)
+        # Ensure all values are valid
+        clamped_out = clamp.(out_l, 0.0, 255.0)
+
+        # Convert to image
+        binary_image = Gray.(clamped_out ./ 255)
+
+        # First step: Fix horizontal mirroring by flipping the original image
+        # This reverses the order of columns (horizontal flip)
+        unmirrored_image = reverse(binary_image, dims=2)
+
+        # Now rotate the unmirrored image
+        # We'll use rotl90 instead of imrotate to avoid interpolation issues
+        rotated_image = rotl90(unmirrored_image)
+
+        # Verify rotated image validity
+        if any(isnan, rotated_image) || any(isinf, rotated_image)
+            WebSockets.write(wsocket, "Invalid pixel values after rotation")
+            return
+        end
+
+        # Continue with encoding
+        io_rotated = IOBuffer()
+        FileIO.save(Stream(format"PNG", io_rotated), rotated_image)
+        binary_data = take!(io_rotated)
         img_base64 = base64encode(binary_data)
         image_packet = "data:image/png;base64,$img_base64"
 
-        # Immediate cleanup of temporary buffers
+        # Send the image
         WebSockets.write(wsocket, image_packet)
-        cleanup_memory!(binary_image, binary_data, img_base64, image_packet, io)
-
+        cleanup_memory!(binary_image, rotated_image, binary_data, img_base64, image_packet, io_rotated)
     catch e
         WebSockets.write(wsocket, "Image processing error: $e")
         cleanup_memory!(z, out_l)

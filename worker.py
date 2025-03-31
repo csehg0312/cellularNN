@@ -4,10 +4,9 @@ import signal
 import sys
 
 def run_worker():
-    print("How many workers to use?")
-    n_workers = input("Number of workers according to processor cores:")
+    
     # Path to the Julia executable
-    julia_executable = f"julia -p {n_workers}"
+    julia_executable = f"julia"
     julia_env_path = os.path.expanduser("/app/JuliaWorker") # Use expanduser to handle "~"
 
     # Julia script to run your function

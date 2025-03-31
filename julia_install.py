@@ -9,6 +9,7 @@ def run_install():
     # Define the Julia script
     julia_script = f"""
         using Pkg
+        Pkg.Registry.add(Pkg.RegistrySpec(url="https://eu-central.pkg.julialang.org/"))
         Pkg.activate("{julia_env_path}")
         Pkg.instantiate()
     """

@@ -76,7 +76,7 @@ class AsyncServer:
             await self.log_to_file(f"Failed to start Julia socket server on {self.host}:{self.julia_port}: {e}")
             return
 
-    async def save_parameters(self, request):
+     async def save_parameters(self, request):
         try:
             json_data = await request.json()
         except Exception as e:
@@ -123,6 +123,7 @@ class AsyncServer:
                     return web.json_response({"error": str(e)}, status=400)
             else:
                 return web.json_response(status=200, text="The radius is 0, excepted minimum of 1!")
+                # You can now use these variables as needed
 
         else:
             response_text = 'No valid JSON data received.'

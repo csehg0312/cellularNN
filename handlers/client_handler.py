@@ -183,6 +183,11 @@ class ClientHandler:
             'server_response': "All data received successfully!",
             'response_status': 200,
             'task_id': task_id,
+            'tempA': params['A'].tolist(),
+            'tempB':params['B'].tolist(),
+            'Ib':params['Ib'],
+            'start':np.min(params['t']),
+            'end':np.max(params['t']),
             'websocket_url': websocket_url  # Send back the WebSocket URL
         })
     async def handle_offer_ws(self, ws_client, ws_local, data):

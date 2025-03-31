@@ -43,7 +43,7 @@ def main():
   # Sobel Edge Detection
   sobel_edge_detect_A = np.array([[1.0, 1.0, 1.0], [1.0, -8.0, 1.0], [1.0, 1.0, 1.0]])
   sobel_edge_detect_B = np.array([[0.0, -1.0, 0.0],[-1.0, 4.0, -1.0],[0.0, -1.0, 0.0]])
-  sobel_edge_detect_t = np.arange(0.1, 0.3+0.01, 0.01)
+  sobel_edge_detect_t = np.arange(0.1, 0.3+0.1, 0.1)
   sobel_edge_detect_Ib = -0.5
   sobel_edge_detect_init = 0.0
 

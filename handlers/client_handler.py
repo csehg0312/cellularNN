@@ -171,7 +171,7 @@ class ClientHandler:
         protocol = "ws"
         # Generate a WebSocket URL for the client to connect to later
         websocket_url = f"{protocol}://0.0.0.0:8082/ws/{task_id}"
-        websocket_url_client = f"{protocol}://0.0.0.0:9000/ws/{task_id}"
+        websocket_url_client = f"{protocol}://localhost:9000/ws/{task_id}"
         data['websocket'] = websocket_url
         # # Store the incoming JSON to Redis database as the key
         await self.server.redis_client.set(f'task:data:{self.task_id}', json.dumps(data))
@@ -188,7 +188,7 @@ class ClientHandler:
             'Ib':params['Ib'],
             'start':np.min(params['t']),
             'end':np.max(params['t']),
-            'websocket_url': websocket_url  # Send back the WebSocket URL
+            'websocket_url': websocket_url_client  # Send back the WebSocket URL
         })
     async def handle_offer_ws(self, ws_client, ws_local, data):
         """

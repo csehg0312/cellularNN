@@ -1,5 +1,7 @@
 import numpy as np
 import gc
+import os 
+import pickle
 
 # Creating the basic cnn parameters
 # parameters source: https://github.com/ankitaggarwal011/PyCNN

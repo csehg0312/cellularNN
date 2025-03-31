@@ -324,7 +324,7 @@ function PhotoCNN() {
             <option value="optimal_edge_detect_">Optimal Edge Detect</option>
             <option value="edge_enhance_">Edge enhance</option>
             <option value="laplacian_edge_">Laplacian Edge Detect</option>
-            <option value="sobel_edge_detect">Sobel Edge Detection</option>
+            <option value="sobel_edge_detect_">Sobel Edge Detection</option>
           </optgroup>
           <optgroup label="Line Detection">
             <option value="diagonal_line_detect_">Diagonal line detection</option>

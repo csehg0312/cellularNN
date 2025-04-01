@@ -131,10 +131,10 @@ def main():
     # Connected Component Detection
     connected_comp_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
     connected_comp_B = np.array(
-        [[0.25, 0.25, 0.25], [0.25, 2.0, 0.25], [0.25, 0.25, 0.25]]
+        [[0.5, 0.5, 0.5], [0.5, 1.0, 0.5], [0.5, 0.5, 0.5]]
     )
-    connected_comp_t = np.linspace(0, 10.0, num=101)
-    connected_comp_Ib = -0.5
+    connected_comp_t = np.arange(0.0, 2.0+0.1, 0.1)
+    connected_comp_Ib = -3.0
     connected_comp_init = 0.0
 
     # Image Sharpening
@@ -190,6 +190,49 @@ def main():
     laplacian_edge_Ib = 0.0
     laplacian_edge_init = 0.0
 
+    # Laplacian of gaussian
+    log_edge_A = np.array([[0.0, 0.25, 0.0],[0.25,-1.0, 0.25],[0.0,0.25,0.0]])
+    log_edge_B = np.array([[0.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,0.0]])
+    log_edge_t = np.arange(0.0, 0.7+0.1, 0.1)
+    log_edge_Ib = -0.5
+    log_edge_init = 0.0
+
+    # Binary erosion
+    binary_erosion_A = np.array([[0.0,1.0,0.0],[1.0,4.0,1.0],[0.0,1.0,0.0]])
+    binary_erosion_B = np.array([[0.0,0.0,0.0],[0.0,4.0,0.0],[0.0,0.0,0.0]])
+    binary_erosion_t = np.arange(0.0,0.7+0.1, 0.1)
+    binary_erosion_Ib = -4.0
+    binary_erosion_init = 0.0
+
+    # Binary dilation
+    binary_dilation_A = np.array([[0.0,1.0,0.0],[1.0,4.0,1.0],[0.0,1.0,0.0]])
+    binary_dilation_B = np.array([[0.0,0.0,0.0],[0.0,4.0,0.0],[0.0,0.0,0.0]])
+    binary_dilation_t = np.arange(0.0,0.7+0.1, 0.1)
+    binary_dilation_Ib = 4.0
+    binary_dilation_init = 0.0
+
+    wave_template_A = np.array([[0.2,0.3,0.1],[0.4,1.0,0.0],[0.0,0.5,0.2]])
+    wave_template_B = np.array([[0.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,0.0]])
+    wave_template_t = np.arange(0.0, 0.5+0.1, 0.1)
+    wave_template_Ib = 0.0
+    wave_template_init = 0.0
+
+    hexagonal_retinal_A = np.array([[0.0,0.0,0.1,0.0,0.0],
+                                    [0.0,0.2,0.3,0.2,0.0],
+                                    [0.1,0.3,1.0,0.3,0.1],
+                                    [0.0,0.2,0.3,0.2,0.0],
+                                    [0.0,0.0,0.1,0.0,0.0]]
+                                  )
+    hexagonal_retinal_B = np.array([[0.0,0.0,0.05,0.0,0.0],
+                                    [0.0,0.1,0.15,0.1,0.1],
+                                    [0.05,0.15,0.6,0.15,0.05],
+                                    [0.0,0.1,0.15,0.1,0.0],
+                                    [0.0,0.0,0.05,0.0,0.0]]
+                                  )
+    hexagonal_retinal_t = np.arange(0.0,0.7+0.1, 0.1)
+    hexagonal_retinal_Ib = 0.0
+    hexagonal_retinal_init = 1.0
+
     # Diffusion
     diffusion_A = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
     diffusion_B = np.array([[0.1, 0.15, 0.1], [0.15, 0.2, 0.15], [0.1, 0.15, 0.1]])
@@ -213,6 +256,21 @@ def main():
         "edge_detect_t": edge_detect_t,
         "edge_detect_Ib": edge_detect_Ib,
         "edge_detect_init": edge_detect_init,
+        "log_edge_A": log_edge_A,
+        "log_edge_B": log_edge_B,
+        "log_edge_t": log_edge_t,
+        "log_edge_Ib":log_edge_Ib,
+        "log_edge_init":log_edge_init,
+        "binary_erosion_A": binary_erosion_A,
+        "binary_erosion_B": binary_erosion_B,
+        "binary_erosion_t":binary_erosion_t,
+        "binary_erosion_Ib":binary_erosion_Ib,
+        "binary_erosion_init":binary_erosion_init,
+        "binary_dilation_A":binary_dilation_A,
+        "binary_dilation_B":binary_dilation_B,
+        "binary_dilation_t": binary_dilation_t,
+        "binary_dilation_Ib":binary_dilation_Ib,
+        "binary_dilation_init":binary_dilation_init,
         "grayscale_edge_detect_A": grayscale_edge_detect_A,
         "grayscale_edge_detect_B": grayscale_edge_detect_B,
         "grayscale_edge_detect_t": grayscale_edge_detect_t,
@@ -308,6 +366,31 @@ def main():
         "laplacian_edge_t": laplacian_edge_t,
         "laplacian_edge_Ib": laplacian_edge_Ib,
         "laplacian_edge_init": laplacian_edge_init,
+        "sobel_edge_detect_A":sobel_edge_detect_A,
+        "sobel_edge_detect_B":sobel_edge_detect_B,
+        "sobel_edge_detect_t":sobel_edge_detect_t,
+        "sobel_edge_detect_Ib":sobel_edge_detect_Ib,
+        "sobel_edge_detect_init":sobel_edge_detect_init,
+        "circle_detect_A":circle_detect_A,
+        "circle_detect_B":circle_detect_B,
+        "circle_detect_t":circle_detect_t,
+        "circle_detect_Ib":circle_detect_Ib,
+        "circle_detect_init":circle_detect_init,
+        "rectangle_detect_A":rectangle_detect_A,
+        "rectangle_detect_B":rectangle_detect_B,
+        "rectangle_detect_t":rectangle_detect_t,
+        "rectangle_detect_Ib":rectangle_detect_Ib,
+        "rectangle_detect_init":rectangle_detect_init,
+        "wave_template_A":wave_template_A,
+        "wave_template_B":wave_template_B,
+        "wave_template_t":wave_template_t,
+        "wave_template_Ib":wave_template_Ib,
+        "wave_template_init":wave_template_init,
+        "hexagonal_retinal_A":hexagonal_retinal_A,
+        "hexagonal_retinal_B":hexagonal_retinal_B,
+        "hexagonal_retinal_t":hexagonal_retinal_t,
+        "hexagonal_retinal_Ib":hexagonal_retinal_Ib,
+        "hexagonal_retinal_init":hexagonal_retinal_init,
     }
 
     # Save the data to a file using pickle

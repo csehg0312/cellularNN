@@ -47,12 +47,10 @@ function parallel_fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10)
     s1 = size(in1)
     s2 = size(in2)
 
-    # Ensure template size is 3x3
-    @assert s2 == (3,3) "Template size must be 3x3"
+    # Calculate padding needed for each side based on template size
+    pad_size_row = div(s2[1] - 1, 2)
+    pad_size_col = div(s2[2] - 1, 2)
     
-    # Calculate padding needed for each block
-    pad_size = 1  # For 3x3 template, we need 1 pixel padding
-
     # Split the input matrix in1 into blocks
     num_workers = nworkers()
     block_size = div(size(in1, 1), num_workers)
@@ -64,8 +62,8 @@ function parallel_fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10)
         end_row = i == num_workers ? size(in1, 1) : i * block_size
         
         # Add padding to blocks (except for boundaries)
-        pad_top = i > 1 ? pad_size : 0
-        pad_bottom = i < num_workers ? pad_size : 0
+        pad_top = i > 1 ? pad_size_row : 0
+        pad_bottom = i < num_workers ? pad_size_row : 0
         
         # Extract block with padding
         block_start = max(1, start_row - pad_top)
@@ -91,14 +89,14 @@ function parallel_fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10)
         if i > 1
             # Blend the overlapping region with previous block
             overlap_start = start_row
-            overlap_end = start_row + pad_size - 1
+            overlap_end = start_row + pad_size_row - 1
             output[overlap_start:overlap_end, :] .= 
                 (output[overlap_start:overlap_end, :] .+ 
-                 res[1:pad_size, :]) ./ 2
+                 res[1:pad_size_row, :]) ./ 2
             
             # Copy the non-overlapping part
             output[overlap_end+1:end_row, :] .= 
-                res[pad_size+1:size(res,1)-pad_size+1, :]
+                res[pad_size_row+1:size(res,1)-pad_size_row+1, :]
         else
             # For first block, just copy the result
             output[start_row:end_row, :] .= res[1:end_row-start_row+1, :]
@@ -107,6 +105,7 @@ function parallel_fftconvolve2d(in1::Matrix{T}, in2::Matrix{T}; threshold=1e-10)
 
     return output
 end
+
 # Shared Array method
 function sa_parallel_fftconvolve2d(in1::Union{Matrix{T}, SharedArray{T}}, in2::Matrix{T}; threshold=1e-10) where T<:Number
     s1 = size(in1)

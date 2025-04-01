@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onCleanup, onMount } from 'solid-js';
 import ResponseNotification from '../components/ResponseNotification';
 // import UploadButton from '../components/UploadButton';
+import { modeOptions } from "../assets/settings";
 import './VideoCNN.module.css';
 
 function isLocalhost() {
@@ -372,7 +373,7 @@ function VideoCNN() {
       {/* Mode selection dropdown - only shown when not streaming */}
       {!isStreaming() && (
         <div class="flex flex-col items-center mt-6 w-full max-w-md">
-          <h3 class="mb-2">Processing Mode:</h3>
+          <h3 class="mb-2">Mode (Mód):</h3>
           <select
             name="settings"
             id="settings"
@@ -380,38 +381,13 @@ function VideoCNN() {
             value={selectedMode()}
             onChange={handleModeChange}
           >
-            <optgroup label="Edge Detection">
-              <option value="edge_detect_">Edge Detection (Él detektálás)</option>
-              <option value="grayscale_edge_detect_">Grayscale Edge Detection (Szürke él detektálás)</option>
-              <option value="optimal_edge_detect_">Optimal Edge Detect</option>
-              <option value="edge_enhance_">Edge enhance</option>
-              <option value="laplacian_edge_">Laplacian Edge Detect</option>
-            </optgroup>
-            <optgroup label="Line Detection">
-              <option value="diagonal_line_detect_">Diagonal line detection</option>
-              <option value="horizontal_line_detect_">Horizontal Line Detect</option>
-              <option value="vertical_line_detect_">Vertical Line Detect</option>
-            </optgroup>
-            <optgroup label="Image Processing">
-              <option value="inversion_">Inversion (Inverz)</option>
-              <option value="noise_removal_">Noise removal</option>
-              <option value="sharpen_">Sharpen</option>
-              <option value="halftone_">Halftone</option>
-              <option value="diffusion_">Diffusion</option>
-            </optgroup>
-            <optgroup label="Object Detection">
-              <option value="corner_detect_">Corner detection (Sarok detektálás)</option>
-              <option value="blob_detect_">Blob detect</option>
-              <option value="texture_segment_">Texture segmentation</option>
-            </optgroup>
-            <optgroup label="Motion and Shadow">
-              <option value="motion_detect_">Motion detection</option>
-              <option value="shadow_detect_">Shadow Detection</option>
-            </optgroup>
-            <optgroup label="Other">
-              <option value="connected_comp_">Connected Components</option>
-              <option value="saved_">Saved</option>
-            </optgroup>
+            {modeOptions.map((group) => (
+              <optgroup label={group.groupName}>
+                {group.options.map((option) => (
+                  <option value={option.value}>{option.label}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </div>
       )}

@@ -11,8 +11,8 @@ def run_worker():
 
     # Julia script to run your function
     julia_script = f"""
-        @everywhere using Pkg
-        @everywhere Pkg.activate("{julia_env_path}")  # Activate your Julia environment
+        using Pkg
+        Pkg.activate("{julia_env_path}")  # Activate your Julia environment
         using JuliaWorker
         JuliaWorker.main()
     """

@@ -100,9 +100,6 @@ function MatrixVisualizer() {
           <div class="mb-2">
             <span class="font-bold">T idő (A vizsgált időpillanat):</span> {timeStart() !== null ? timeStart().toFixed(2) : 'N/A'} to {timeEnd() !== null ? timeEnd().toFixed(2) : 'N/A'}
           </div>
-          <div>
-            <span class="font-bold">Adatok szerverre érkezése és válasz</span> {timeElapsed() !== null ? timeElapsed().toFixed(2) : 'N/A'} seconds
-          </div>
         </div>
       </Show>
 

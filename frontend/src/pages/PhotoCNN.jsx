@@ -97,18 +97,24 @@ function PhotoCNN() {
                 byteArray[i] = byteCharacters.charCodeAt(i);
               }
   
+              // Create a meaningful filename with the processing mode
+              const modeName = selectedMode().replace('_', '-');
+              const currentDate = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+              const fileName = `processed-${modeName}-${currentDate}`;
+  
               const blob = new Blob([byteArray], { type: mimeType });
               const url = URL.createObjectURL(blob);
   
               setOutputImage(url);
-              setLogMessages(prev => [...prev, 'Successfully created and set image URL']);
+              setLogMessages(prev => [...prev, `Successfully created and set image URL with filename: ${fileName}`]);
               
-              // Show notification about successful image processing
+              // Show notification about successful image processing with the filename
               setProcessingStage('Complete');
-              setImageNotification(`Image processing complete! (${processingTime.toFixed(2)} seconds)`);
+              setImageNotification(`Image processing complete: ${fileName} (${processingTime.toFixed(2)} seconds)`);
               setProcessingDetails(prev => ({
                 ...prev,
                 mimeType,
+                fileName,
                 processingTime: processingTime.toFixed(2),
                 mode: selectedMode()
               }));
@@ -134,13 +140,17 @@ function PhotoCNN() {
             const event = new CustomEvent('serverDataReceived', { detail: payload });
             window.dispatchEvent(event);
             
+            // Create a filename with the processing mode for the matrix data
+            const matrixModeName = selectedMode().replace('_', '-');
+            
             // Update processing notification
             setProcessingStage('Matrix');
-            setImageNotification('Matrix data received - analyzing image');
+            setImageNotification(`Matrix data received for ${matrixModeName} - analyzing image`);
             setProcessingDetails(prev => ({
               ...prev,
               matrixSize: payload.tempA ? `${payload.tempA.length}x${payload.tempA[0]?.length || 0}` : 'Unknown',
-              filterType: selectedMode().replace('_', ' ')
+              filterType: selectedMode().replace('_', ' '),
+              matrixMode: matrixModeName
             }));
             setShowProcessingNotification(true);
           }
@@ -148,9 +158,10 @@ function PhotoCNN() {
   
         case 'progress':
           setLogMessages(prev => [...prev, `${type}: ${msg || payload}`]);
-          // Update processing notification with progress
+          // Update processing notification with progress and mode
+          const modeForProgress = selectedMode().replace('_', '-');
           setProcessingStage('Processing');
-          setImageNotification(`Processing: ${msg || payload}`);
+          setImageNotification(`Processing with ${modeForProgress}: ${msg || payload}`);
           setShowProcessingNotification(true);
           break;
           
@@ -162,9 +173,10 @@ function PhotoCNN() {
           
         case 'status':
           setLogMessages(prev => [...prev, `${type}: ${msg || payload}`]);
-          // Update processing status
+          // Update processing status with mode information
+          const modeForStatus = selectedMode().replace('_', '-');
           setProcessingStage('Status');
-          setImageNotification(`Status update: ${msg || payload}`);
+          setImageNotification(`Status update for ${modeForStatus}: ${msg || payload}`);
           setShowProcessingNotification(true);
           break;
   
@@ -176,7 +188,6 @@ function PhotoCNN() {
       setLogMessages(prev => [...prev, `General error handling message: ${error.message}`]);
     }
   };
-
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {

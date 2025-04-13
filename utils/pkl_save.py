@@ -60,7 +60,7 @@ def main():
     circle_detect_A = np.array([[0.0, -1.0, 0.0], [-1.0, 4.0, -1.0], [0.0, -1.0, 0.0]])
     circle_detect_B = np.array([[0.0, 1.0, 0.0], [1.0, -4.0, 1.0], [0.0, 1.0, 0.0]])
     circle_detect_Ib = -0.5
-    circle_detect_t = np.arange(0.1, 0.5 + 0.1, 0.1)
+    circle_detect_t = np.arange(0.1, 0.3 + 0.1, 0.1)
     circle_detect_init = 0.0
 
     # Rectangle detection
@@ -229,7 +229,7 @@ def main():
                                     [0.0,0.1,0.15,0.1,0.0],
                                     [0.0,0.0,0.05,0.0,0.0]]
                                   )
-    hexagonal_retinal_t = np.arange(0.0,0.7+0.1, 0.1)
+    hexagonal_retinal_t = np.arange(0.0,0.4+0.1, 0.1)
     hexagonal_retinal_Ib = 0.0
     hexagonal_retinal_init = 1.0
 

@@ -25,9 +25,9 @@ function Navbar() {
           <li>
             <a href="/photocnn" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Photo CNN</a>
           </li>
-          <li>
+{/*           <li>
             <a href="/videocnn" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Video CNN</a>
-          </li>
+          </li> */}
           <li>
             <a href="/stx" className="block py-2 px-4 md:px-0 text-custom-white hover:text-custom-deepOrange">Paraméterek létrehozása</a>
           </li>
